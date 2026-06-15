@@ -13,7 +13,13 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 
 from app.config import Config, load_config
 from app.db.database import Database
-from app.bot.services.xui_api import XUIApiService, XUIError
+from app.bot.services.bootstrap import (
+    bootstrap_with_retries,
+    close_xui,
+    ensure_vpn_service,
+    get_vpn_service,
+    xui_service,
+)
 from app.bot.services.vpn import VPNService
 from app.bot.filters.is_private import IsPrivate
 from app.bot.filters.is_admin import IsAdmin
@@ -42,40 +48,12 @@ TELEGRAM_WEBHOOK = "/webhook"
 
 logger = logging.getLogger(__name__)
 
-# ── Global shared state ───────────────────────────────────────────────────────
-xui_service: XUIApiService | None = None
-WS_INBOUND_ID: int | None = None
-REALITY_INBOUND_ID: int | None = None
-
-
-async def bootstrap_inbounds(config: Config) -> None:
-    """Login to panel and cache WS + Reality inbound IDs. Called at startup."""
-    global xui_service, WS_INBOUND_ID, REALITY_INBOUND_ID
-    xui_service = XUIApiService(config.xui)
-    try:
-        await xui_service.login()
-        ws_id, reality_id = await xui_service.find_inbound_ids(
-            ws_name=config.xui.WS_INBOUND_NAME,
-            reality_name=config.xui.REALITY_INBOUND_NAME,
-        )
-        WS_INBOUND_ID = ws_id
-        REALITY_INBOUND_ID = reality_id
-        logger.info(
-            f"✅ Inbound bootstrap OK — WS: {ws_id} ({config.xui.WS_INBOUND_NAME}), "
-            f"Reality: {reality_id} ({config.xui.REALITY_INBOUND_NAME})"
-        )
-    except Exception as e:
-        logger.warning(f"⚠️ Inbound bootstrap FAILED: {e}. Bot will run but VPN creation is disabled until panel is reachable.")
-        return
-
-    logger.info("XUI bootstrap completed.")
-
 
 async def on_startup(bot: Bot, config: Config, db: Database, **kwargs) -> None:
     logger.info("Bot starting up...")
     from app.bot.utils.commands import setup as setup_commands
     await setup_commands(bot)
-    await bootstrap_inbounds(config)
+    await bootstrap_with_retries(config)
     if not config.bot.USE_POLLING:
         webhook_url = urljoin(config.bot.DOMAIN + "/", TELEGRAM_WEBHOOK.lstrip("/"))
         logger.info(f"Setting webhook: {webhook_url}")
@@ -117,8 +95,7 @@ async def on_startup(bot: Bot, config: Config, db: Database, **kwargs) -> None:
 
 async def on_shutdown(bot: Bot, db: Database, **kwargs) -> None:
     logger.info("Bot shutting down...")
-    if xui_service:
-        await xui_service.close()
+    await close_xui()
     await db.close()
     await bot.session.close()
     logger.info("Cleanup done.")
@@ -183,14 +160,10 @@ async def main() -> None:
     dispatcher.shutdown.register(on_shutdown)
 
     # ── Start ─────────────────────────────────────────────────────────────────
-    # Build VPN service only if inbound IDs were cached
-    vpn_service = None
-    if WS_INBOUND_ID and REALITY_INBOUND_ID and xui_service:
-        vpn_service = VPNService(
-            xui=xui_service,
-            ws_inbound_id=WS_INBOUND_ID,
-            reality_inbound_id=REALITY_INBOUND_ID,
-            sub_base_url=config.xui.SUB_BASE_URL,
+    vpn_service = get_vpn_service(config)
+    if not vpn_service and not config.bot.USE_POLLING:
+        logger.warning(
+            "VPN service unavailable — trial/purchase will fail until XUI panel connects."
         )
 
     workflow_data = dict(

@@ -11,6 +11,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
+from app.bot.services.bootstrap import ensure_vpn_service
 from app.bot.services.vpn import VPNService
 from app.bot.services.wallet import deduct
 from app.bot.services.notifications import forward_payment_to_admin
@@ -99,6 +100,8 @@ async def cb_pay_wallet(
     plan_key = callback.data.split(":", 2)[2]
     config = kwargs.get("config")
     vpn_service: VPNService | None = kwargs.get("vpn_service")
+    if vpn_service is None and config:
+        vpn_service = await ensure_vpn_service(config)
     plans = config.pricing.PLANS if config else {}
     plan = plans.get(plan_key)
     if not plan:
@@ -301,6 +304,8 @@ async def cb_admin_approve(
         return
 
     vpn_service: VPNService | None = kwargs.get("vpn_service")
+    if vpn_service is None and config:
+        vpn_service = await ensure_vpn_service(config)
     plans = config.pricing.PLANS if config else {}
     plan = plans.get(tx.plan_key or "")
 

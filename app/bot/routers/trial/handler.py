@@ -8,6 +8,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
+from app.bot.services.bootstrap import ensure_vpn_service
 from app.bot.services.vpn import VPNService
 from app.bot.utils.keyboards import back_to_menu_keyboard
 from app.db.models import User
@@ -56,6 +57,8 @@ async def cb_trial_confirm(
 
     config = kwargs.get("config")
     vpn_service: VPNService | None = kwargs.get("vpn_service")
+    if vpn_service is None and config:
+        vpn_service = await ensure_vpn_service(config)
 
     if vpn_service is None:
         await callback.message.edit_text(fa.ERRORS["api_error"], reply_markup=back_to_menu_keyboard())

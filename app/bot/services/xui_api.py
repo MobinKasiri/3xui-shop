@@ -132,24 +132,45 @@ class XUIApiService:
     async def login(self) -> None:
         """Authenticate via cookie. Raises XUIAuthError on failure."""
         session = await self._get_session()
-        # Login is at {HOST}{PATH}/login  (e.g. https://host:2087/secret/login)
         url = self._base + "/login"
         payload = {
             "username": self._config.USERNAME,
             "password": self._config.PASSWORD,
             "twoFactorCode": "",
         }
+        last_error = "unknown"
         try:
-            async with session.post(url, json=payload) as resp:
+            # Try JSON first (OpenAPI spec), then form-urlencoded (most panels).
+            for use_json in (True, False):
                 try:
-                    data = await resp.json(content_type=None)
-                except Exception:
-                    data = None
-                if not data or not data.get("success"):
-                    msg = (data or {}).get("msg", f"HTTP {resp.status}")
-                    raise XUIAuthError(f"Login failed: {msg}")
-                self._logged_in = True
-                logger.info("3X-UI panel login successful.")
+                    kwargs: dict[str, Any] = {}
+                    if use_json:
+                        kwargs["json"] = payload
+                    else:
+                        kwargs["data"] = payload
+                    async with session.post(url, **kwargs) as resp:
+                        try:
+                            data = await resp.json(content_type=None)
+                        except Exception:
+                            text = await resp.text()
+                            data = None
+                            last_error = f"HTTP {resp.status}: {text[:200]}"
+                        if data and data.get("success"):
+                            self._logged_in = True
+                            logger.info(
+                                "3X-UI panel login successful (%s).",
+                                "json" if use_json else "form",
+                            )
+                            return
+                        if data:
+                            last_error = data.get("msg", f"HTTP {resp.status}")
+                        elif not last_error.startswith("HTTP"):
+                            last_error = f"HTTP {resp.status}"
+                except aiohttp.ClientError as e:
+                    last_error = str(e)
+                    if not use_json:
+                        raise XUINetworkError(str(e)) from e
+            raise XUIAuthError(f"Login failed: {last_error}")
         except XUIAuthError:
             raise
         except aiohttp.ClientError as e:
@@ -203,17 +224,52 @@ class XUIApiService:
     ) -> tuple[int, int]:
         """Return (ws_inbound_id, reality_inbound_id). Raises XUINotFound if missing."""
         inbounds = await self.list_inbounds()
+        available = [(ib.id, ib.remark, ib.port) for ib in inbounds]
+        logger.info(f"Panel inbounds: {available}")
+
+        def _norm(s: str) -> str:
+            return " ".join(s.split())
+
+        ws_name_n = _norm(ws_name)
+        reality_name_n = _norm(reality_name)
+
         ws_id: int | None = None
         reality_id: int | None = None
         for ib in inbounds:
-            if ib.remark == ws_name:
+            remark_n = _norm(ib.remark)
+            if remark_n == ws_name_n:
                 ws_id = ib.id
-            elif ib.remark == reality_name:
+            if remark_n == reality_name_n:
                 reality_id = ib.id
+
+        # Fallback: match by typical ports (WS=8080, Reality=443)
         if ws_id is None:
-            raise XUINotFound(f"Inbound '{ws_name}' not found on panel.")
+            for ib in inbounds:
+                if ib.port == 8080 and ib.enable:
+                    ws_id = ib.id
+                    logger.warning(
+                        f"WS inbound matched by port 8080: id={ib.id} remark={ib.remark!r}"
+                    )
+                    break
         if reality_id is None:
-            raise XUINotFound(f"Inbound '{reality_name}' not found on panel.")
+            for ib in inbounds:
+                if ib.port == 443 and ib.enable:
+                    reality_id = ib.id
+                    logger.warning(
+                        f"Reality inbound matched by port 443: id={ib.id} remark={ib.remark!r}"
+                    )
+                    break
+
+        if ws_id is None:
+            names = [ib.remark for ib in inbounds]
+            raise XUINotFound(
+                f"Inbound '{ws_name}' not found. Available remarks: {names}"
+            )
+        if reality_id is None:
+            names = [ib.remark for ib in inbounds]
+            raise XUINotFound(
+                f"Inbound '{reality_name}' not found. Available remarks: {names}"
+            )
         logger.info(f"Inbound IDs — WS: {ws_id}, Reality: {reality_id}")
         return ws_id, reality_id
 

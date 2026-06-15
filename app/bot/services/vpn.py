@@ -52,9 +52,8 @@ class VPNService:
         bonus_mb: int = 0,
     ) -> VPNConfigResult:
         """
-        Create a VPN config on both WS + Reality inbounds with the same UUID/sub_id.
-        Rolls back WS client if Reality fails.
-        Returns VPNConfigResult with the persisted DB row.
+        Create a VPN client on both WS + Reality inbounds in a single API call.
+        Same UUID/sub_id on both — subscription URL stays stable.
         """
         email = make_panel_email(user_id)
         panel_uuid = make_uuid()
@@ -65,41 +64,22 @@ class VPNService:
         expiry_ms = add_days_ms(0, duration_days)
         expiry_dt = ms_to_datetime(expiry_ms)
 
-        # ── 1. Add WS client ─────────────────────────────────────────────────
-        ws_payload = ClientAddPayload(
+        # One call attaches client to both inbounds (API supports inboundIds array)
+        payload = ClientAddPayload(
             email=email,
             uuid=panel_uuid,
             sub_id=sub_id,
             total_bytes=total_bytes,
             expiry_ms=expiry_ms,
-            flow="",
-            inbound_ids=[self.ws_id],
+            flow="xtls-rprx-vision",
+            inbound_ids=[self.ws_id, self.reality_id],
             tg_id=tg_id,
         )
-        await self.xui.add_client(ws_payload)
-        logger.info(f"WS client created for user {user_id}: {email}")
-
-        # ── 2. Add Reality client (same UUID; rollback WS if it fails) ────────
-        try:
-            reality_payload = ClientAddPayload(
-                email=email,
-                uuid=panel_uuid,
-                sub_id=sub_id,
-                total_bytes=total_bytes,
-                expiry_ms=expiry_ms,
-                flow="xtls-rprx-vision",
-                inbound_ids=[self.reality_id],
-                tg_id=tg_id,
-            )
-            await self.xui.add_client(reality_payload)
-            logger.info(f"Reality client created for user {user_id}: {email}")
-        except XUIError as e:
-            logger.error(f"Reality create failed for {email}, rolling back WS client. Error: {e}")
-            try:
-                await self.xui.delete_client(email)
-            except Exception as rollback_err:
-                logger.error(f"Rollback also failed: {rollback_err}")
-            raise
+        await self.xui.add_client(payload)
+        logger.info(
+            f"Client created for user {user_id}: {email} "
+            f"on inbounds [{self.ws_id}, {self.reality_id}]"
+        )
 
         sub_url = self.sub_base_url + sub_id
 
@@ -152,7 +132,7 @@ class VPNService:
             config.panel_email,
             total_bytes=new_total_bytes,
             expiry_ms=new_expiry_ms,
-            flow="xtls-rprx-vision" if "reality" in config.plan_key.lower() else "",
+            flow="xtls-rprx-vision",
             tg_id=config.user_id,
         )
 
