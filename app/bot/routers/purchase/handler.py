@@ -33,7 +33,7 @@ class PurchaseStates(StatesGroup):
 def _plans_keyboard(plans: dict) -> object:
     builder = InlineKeyboardBuilder()
     for key, plan in plans.items():
-        label = f"{plan['emoji']} {plan['name']} — {format_toman(plan['price'])} تومان"
+        label = f"{plan['emoji']} {plan['name']} | {plan['traffic_gb']} گیگ — {format_toman(plan['price'])} تومان"
         builder.button(text=label, callback_data=f"purchase:plan:{key}")
     builder.button(text=fa.BACK_TO_MENU, callback_data="main_menu")
     builder.adjust(1)
