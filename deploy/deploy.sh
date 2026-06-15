@@ -54,7 +54,7 @@ curl -sS "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=${WEBHOOK_URL}
 # ─── 6. Health check loop ────────────────────────────────────────────────────
 info "Health checking..."
 for i in {1..12}; do
-    STATUS=$(curl -o /dev/null -sw "%{http_code}" "https://${BOT_DOMAIN}/health" 2>/dev/null || echo "000")
+    STATUS=$(curl -o /dev/null -sk -w "%{http_code}" "https://${BOT_DOMAIN}/health" 2>/dev/null || echo "000")
     if [[ "$STATUS" == "200" ]]; then
         info "✅ Bot is healthy!"
         break

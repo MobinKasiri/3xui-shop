@@ -13,7 +13,9 @@ nano .env.production
 Required fields:
 - `BOT_TOKEN` — real BotFather token for `@vpn_nexora_bot`
 - `BOT_ADMINS` — your Telegram numeric ID (e.g. `503376556`)
-- `BOT_DOMAIN` — `bot.nexoranode.xyz`
+- `BOT_DOMAIN` — `bot.nexoranode.xyz:8443` (port 8443 because 443 is used by Reality)
+- `NGINX_HTTPS_PORT` — `8443`
+- `NGINX_HTTP_PORT` — `8080` (change if 80/8080 is also taken)
 - `XUI_USERNAME` / `XUI_PASSWORD` — 3X-UI panel admin credentials
 - `DATABASE_URL` — `postgresql+asyncpg://nexora:STRONG_PASS@nexoranode-postgres:5432/nexorabot`
 - `POSTGRES_PASSWORD` — same strong password
@@ -65,7 +67,7 @@ docker exec nexoranode-bot poetry run alembic -c /app/db/alembic.ini upgrade hea
 
 After deploy, set the webhook:
 ```bash
-curl "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=https://bot.nexoranode.xyz/webhook"
+curl "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=https://bot.nexoranode.xyz:8443/webhook"
 ```
 
 Expected response: `{"ok":true,"result":true,"description":"Webhook was set"}`
@@ -73,15 +75,14 @@ Expected response: `{"ok":true,"result":true,"description":"Webhook was set"}`
 ### 6. Health Check
 
 ```bash
-curl https://bot.nexoranode.xyz/health
+curl -k https://bot.nexoranode.xyz:8443/health
 # Expected: 200 OK
 ```
 
 Check bot logs:
 ```bash
 docker logs nexoranode-bot -f
-# Should show: "Run polling for bot @vpn_nexora_bot" → NO (webhook mode)
-# Should show: "Webhook set: https://bot.nexoranode.xyz/webhook"
+# Should show: "Webhook set: https://bot.nexoranode.xyz:8443/webhook"
 # Should show: "✅ Inbound bootstrap OK — WS: X, Reality: Y"
 ```
 
