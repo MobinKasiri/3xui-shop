@@ -100,13 +100,20 @@ class Config:
 
 
 def _normalize_bot_domain(raw: str) -> str:
-    """Return https://host[:port] without duplicate scheme or trailing slash."""
+    """Return host[:port] without scheme or trailing slash."""
     domain = raw.strip().rstrip("/")
     if domain.startswith("https://"):
         domain = domain[len("https://"):]
     elif domain.startswith("http://"):
         domain = domain[len("http://"):]
-    return f"https://{domain}"
+    return domain
+
+
+def _bot_public_url(env: Env) -> str:
+    host = _normalize_bot_domain(env.str("BOT_DOMAIN", default="localhost"))
+    use_https = env.bool("BOT_USE_HTTPS", default=False)
+    scheme = "https" if use_https else "http"
+    return f"{scheme}://{host}"
 
 
 def _int_env(env: Env, key: str, default: int = 0) -> int:
@@ -194,7 +201,7 @@ def load_config() -> Config:
             TOKEN=env.str("BOT_TOKEN"),
             ADMINS=admins,
             DEV_ID=_int_env(env, "BOT_DEV_ID", default=0),
-            DOMAIN=_normalize_bot_domain(env.str("BOT_DOMAIN", default="localhost")),
+            DOMAIN=_bot_public_url(env),
             PORT=_int_env(env, "BOT_PORT", default=DEFAULT_BOT_PORT),
             USE_POLLING=env.bool("BOT_USE_POLLING", default=False),
         ),

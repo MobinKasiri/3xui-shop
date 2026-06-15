@@ -74,12 +74,15 @@ services:
     container_name: nexoranode-nginx
     restart: unless-stopped
     ports:
-      - "${NGINX_HTTP_PORT:-8080}:80"
+      - "${NGINX_HTTP_PORT:-80}:80"
       - "${NGINX_HTTPS_PORT:-8443}:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.http.conf:/etc/nginx/templates/nginx.http.conf:ro
+      - ./nginx/nginx.https.conf:/etc/nginx/templates/nginx.https.conf:ro
+      - ./nginx/docker-entrypoint.sh:/docker-entrypoint.sh:ro
       - ./nginx/certs:/etc/nginx/certs:ro
       - certbot_www:/var/www/certbot:ro
+    entrypoint: ["/bin/sh", "/docker-entrypoint.sh"]
     depends_on:
       - bot
     networks:
