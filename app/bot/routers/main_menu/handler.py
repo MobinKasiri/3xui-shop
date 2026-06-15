@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from aiogram import F, Router
 from aiogram.filters import CommandStart
 from aiogram.types import (
@@ -16,6 +18,8 @@ from app.bot.i18n import fa
 from app.db.models import User
 
 router = Router(name="main_menu")
+
+logger = logging.getLogger(__name__)
 
 # ── Reply keyboard button labels ──────────────────────────────────────────────
 BTN_TRIAL      = "🔑 اکانت تست"
@@ -229,8 +233,12 @@ async def msg_admin(message: Message, user: User, session: AsyncSession, **kwarg
         return
     from app.bot.routers.admin.handler import _dashboard_text, _admin_keyboard
     xui_service = kwargs.get("xui_service")
-    text = await _dashboard_text(session, xui_service)
-    await message.answer(text, reply_markup=_admin_keyboard())
+    try:
+        text = await _dashboard_text(session, xui_service)
+        await message.answer(text, reply_markup=_admin_keyboard())
+    except Exception:
+        logger.exception("Admin dashboard failed for user %s", user.tg_id)
+        await message.answer(fa.ERRORS["general"])
 
 
 # ── cancel FSM (from any state) ───────────────────────────────────────────────

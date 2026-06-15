@@ -35,6 +35,8 @@ class XUIConfig:
     SUB_BASE_URL: str  # https://s.nexoranode.xyz:2096/s/
     WS_INBOUND_NAME: str    # NX-WS
     REALITY_INBOUND_NAME: str  # NX-Reality
+    START_AFTER_FIRST_USE: bool = True
+    DEFAULT_DURATION_DAYS: int = 30
 
     @property
     def base_url(self) -> str:
@@ -223,6 +225,8 @@ def load_config() -> Config:
             SUB_BASE_URL=env.str("XUI_SUB_BASE_URL", default="https://s.nexoranode.xyz:2096/s/"),
             WS_INBOUND_NAME=env.str("XUI_WS_INBOUND_NAME", default="NX-WS"),
             REALITY_INBOUND_NAME=env.str("XUI_REALITY_INBOUND_NAME", default="NX-Reality"),
+            START_AFTER_FIRST_USE=env.bool("XUI_START_AFTER_FIRST_USE", default=True),
+            DEFAULT_DURATION_DAYS=_int_env(env, "XUI_DEFAULT_DURATION_DAYS", default=30),
         ),
         database=DatabaseConfig(
             URL=env.str(

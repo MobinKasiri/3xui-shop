@@ -53,6 +53,22 @@ def now_ms() -> int:
     return int(datetime.now(tz=timezone.utc).timestamp() * 1000)
 
 
+MS_PER_DAY = 86_400_000
+
+
+def start_after_first_use_ms(days: int) -> int:
+    """3X-UI delayed start: negative ms = duration counted after first connection."""
+    return -days * MS_PER_DAY
+
+
+def is_delayed_start(expiry_ms: int) -> bool:
+    return expiry_ms < 0
+
+
+def delayed_start_days(expiry_ms: int) -> int:
+    return abs(expiry_ms) // MS_PER_DAY
+
+
 def add_days_ms(base_ms: int, days: int) -> int:
     """Add `days` to a millisecond timestamp. base_ms=0 means 'from now'."""
     from datetime import timedelta
@@ -62,3 +78,13 @@ def add_days_ms(base_ms: int, days: int) -> int:
         base = datetime.fromtimestamp(base_ms / 1000, tz=timezone.utc)
     result = base + timedelta(days=days)
     return datetime_to_ms(result)
+
+
+def extend_expiry_ms(current_ms: int, days: int, *, delayed_start: bool) -> int:
+    """Extend panel expiry — negative values stay delayed until first use."""
+    if delayed_start and current_ms <= 0:
+        base = current_ms if current_ms < 0 else start_after_first_use_ms(days)
+        if current_ms < 0:
+            return current_ms - days * MS_PER_DAY
+        return base
+    return add_days_ms(max(current_ms, now_ms()), days)

@@ -69,6 +69,8 @@ def get_vpn_service(config: Config) -> VPNService | None:
             ws_inbound_id=WS_INBOUND_ID,
             reality_inbound_id=REALITY_INBOUND_ID,
             sub_base_url=config.xui.SUB_BASE_URL,
+            start_after_first_use=config.xui.START_AFTER_FIRST_USE,
+            default_duration_days=config.xui.DEFAULT_DURATION_DAYS,
         )
     return None
 

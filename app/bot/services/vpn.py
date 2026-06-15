@@ -12,7 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.services.xui_api import XUIApiService, ClientAddPayload, XUIError
 from app.bot.utils.ids import make_panel_email, make_uuid
-from app.bot.utils.jalali import add_days_ms, ms_to_datetime, now_ms
+from app.bot.utils.jalali import (
+    add_days_ms,
+    extend_expiry_ms,
+    is_delayed_start,
+    ms_to_datetime,
+    start_after_first_use_ms,
+)
 from app.db.models import VPNConfig
 
 logger = logging.getLogger(__name__)
@@ -34,11 +40,16 @@ class VPNService:
         ws_inbound_id: int,
         reality_inbound_id: int,
         sub_base_url: str,
+        *,
+        start_after_first_use: bool = True,
+        default_duration_days: int = 30,
     ) -> None:
         self.xui = xui
         self.ws_id = ws_inbound_id
         self.reality_id = reality_inbound_id
         self.sub_base_url = sub_base_url.rstrip("/") + "/"
+        self.start_after_first_use = start_after_first_use
+        self.default_duration_days = default_duration_days
 
     async def create_config(
         self,
@@ -61,8 +72,13 @@ class VPNService:
 
         total_mb = traffic_mb + bonus_mb
         total_bytes = total_mb * MB
-        expiry_ms = add_days_ms(0, duration_days)
-        expiry_dt = ms_to_datetime(expiry_ms)
+        days = duration_days or self.default_duration_days
+        if self.start_after_first_use:
+            expiry_ms = start_after_first_use_ms(days)
+            expiry_dt = None
+        else:
+            expiry_ms = add_days_ms(0, days)
+            expiry_dt = ms_to_datetime(expiry_ms)
 
         payload = ClientAddPayload(
             email=email,
@@ -114,15 +130,30 @@ class VPNService:
         try:
             live = await self.xui.get_client_traffic(config.panel_email)
             used_bytes = live.used_bytes
+            panel_expiry_ms = live.expiry_time
         except XUIError:
             used_bytes = config.traffic_used_bytes
+            panel_expiry_ms = 0
 
         remaining = max(0, config.traffic_limit_bytes - used_bytes)
         new_total_bytes = remaining + (plan_traffic_mb * MB)
 
-        current_ms = int(config.expiry_date.timestamp() * 1000) if config.expiry_date else 0
-        new_expiry_ms = add_days_ms(max(current_ms, now_ms()), plan_days)
-        new_expiry_dt = ms_to_datetime(new_expiry_ms)
+        if panel_expiry_ms < 0:
+            current_ms = panel_expiry_ms
+        elif panel_expiry_ms > 0:
+            current_ms = panel_expiry_ms
+        elif config.expiry_date:
+            current_ms = int(config.expiry_date.timestamp() * 1000)
+        else:
+            current_ms = 0
+
+        delayed = is_delayed_start(current_ms) or (
+            self.start_after_first_use and current_ms == 0
+        )
+        new_expiry_ms = extend_expiry_ms(
+            current_ms, plan_days, delayed_start=delayed
+        )
+        new_expiry_dt = ms_to_datetime(new_expiry_ms) if new_expiry_ms > 0 else None
 
         await self.xui.update_client(
             config.panel_email,

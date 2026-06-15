@@ -447,13 +447,22 @@ class XUIApiService:
     async def get_server_status(self) -> ServerStatus:
         """GET /panel/api/server/status"""
         data = await self._request("GET", "/panel/api/server/status")
-        obj = data.get("obj", {})
+        obj = data.get("obj", {}) or {}
+        mem = obj.get("mem") or {}
+        if isinstance(mem, dict):
+            mem_current = mem.get("current", 0)
+            mem_total = mem.get("total", 1)
+        else:
+            mem_current = int(mem) if mem else 0
+            mem_total = 1
+        xray = obj.get("xray") or {}
+        xray_state = xray.get("state", "unknown") if isinstance(xray, dict) else str(xray)
         return ServerStatus(
-            cpu=obj.get("cpu", 0.0),
-            mem_current=obj.get("mem", {}).get("current", 0),
-            mem_total=obj.get("mem", {}).get("total", 1),
-            uptime=obj.get("uptime", 0),
-            xray_state=obj.get("xray", {}).get("state", "unknown"),
+            cpu=float(obj.get("cpu", 0.0) or 0.0),
+            mem_current=mem_current,
+            mem_total=mem_total or 1,
+            uptime=int(obj.get("uptime", 0) or 0),
+            xray_state=xray_state,
         )
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────

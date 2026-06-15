@@ -177,6 +177,7 @@ SERVICE_EXPIRED_CARD = (
 )
 DAYS_LEFT_FMT = "{n} روز مانده"
 DAYS_EXPIRED = "منقضی شده"
+DELAYED_START_FMT = "شروع پس از اولین اتصال ({n} روز)"
 GET_LINK_BTN = "🔗 دریافت لینک اشتراک"
 RENEW_BTN = "🔄 تمدید"
 SUB_LINK_MSG = "🔗 <b>لینک اشتراک شما:</b>\n<code>{url}</code>"

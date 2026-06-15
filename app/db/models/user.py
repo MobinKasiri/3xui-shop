@@ -99,8 +99,8 @@ class User(Base):
 
     @classmethod
     async def today_count(cls, session: AsyncSession) -> int:
-        from datetime import datetime, timezone, timedelta
-        today_start = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        from datetime import datetime, timedelta
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         tomorrow = today_start + timedelta(days=1)
         from sqlalchemy import func as f
         result = await session.execute(

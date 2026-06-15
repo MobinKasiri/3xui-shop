@@ -17,7 +17,7 @@ from app.bot.services.wallet import deduct
 from app.bot.services.notifications import forward_payment_to_admin
 from app.bot.utils.jalali import to_jalali
 from app.bot.utils.keyboards import back_to_menu_keyboard
-from app.bot.utils.persian import format_toman
+from app.bot.utils.persian import format_toman, to_persian_digits
 from app.db.models import User, VPNConfig
 from app.db.models.transaction import (
     Transaction, TX_PURCHASE, TX_CONFIRMED, TX_PENDING, TX_REJECTED
@@ -169,7 +169,11 @@ async def cb_pay_wallet(
         # Update tx with config_id
         await Transaction.update(session, tx.id, config_id=result.config.id, status=TX_CONFIRMED)
 
-        expiry_jalali = to_jalali(result.config.expiry_date) if result.config.expiry_date else "—"
+        expiry_jalali = (
+            to_jalali(result.config.expiry_date)
+            if result.config.expiry_date
+            else fa.DELAYED_START_FMT.format(n=to_persian_digits(plan["duration_days"]))
+        )
         await callback.message.edit_text(
             fa.PURCHASE_SUCCESS.format(
                 plan_name=plan["name"],
@@ -336,7 +340,11 @@ async def cb_admin_approve(
             confirmed_at=datetime.utcnow(),
         )
 
-        expiry_jalali = to_jalali(result.config.expiry_date) if result.config.expiry_date else "—"
+        expiry_jalali = (
+            to_jalali(result.config.expiry_date)
+            if result.config.expiry_date
+            else fa.DELAYED_START_FMT.format(n=to_persian_digits(plan["duration_days"]))
+        )
         # Notify buyer
         await callback.bot.send_message(
             buyer.tg_id,

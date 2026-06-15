@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
 from app.bot.services.xui_api import XUIApiService, XUIError
-from app.bot.utils.jalali import to_jalali, days_until
+from app.bot.utils.jalali import to_jalali, days_until, delayed_start_days, is_delayed_start
 from app.bot.utils.keyboards import back_to_menu_keyboard
 from app.bot.utils.persian import to_persian_digits
 from app.bot.utils.progress import traffic_bar, format_gb
@@ -25,20 +25,63 @@ def _service_card_text(
     config: VPNConfig,
     used_bytes: int,
     plans: dict,
+    panel_expiry_ms: int | None = None,
 ) -> str:
     plan = plans.get(config.plan_key, {})
     plan_name = plan.get("name", config.plan_key or "سرویس")
+    duration_days = plan.get("duration_days", 30)
 
     is_active = config.is_active
     badge = fa.SERVICE_ACTIVE_BADGE if is_active else fa.SERVICE_EXPIRED_BADGE
 
+    delayed = panel_expiry_ms is not None and is_delayed_start(panel_expiry_ms)
     now = datetime.now(tz=timezone.utc)
     expiry = config.expiry_date
     if expiry and expiry.tzinfo is None:
         expiry = expiry.replace(tzinfo=timezone.utc)
-    expired = expiry is None or expiry < now
 
-    if expired or not is_active:
+    if delayed:
+        days = delayed_start_days(panel_expiry_ms)
+        expiry_str = fa.DELAYED_START_FMT.format(n=to_persian_digits(days))
+        days_str = fa.DELAYED_START_FMT.format(n=to_persian_digits(days))
+        bar = traffic_bar(used_bytes, config.traffic_limit_bytes, width=10)
+        used_gb = used_bytes / (1024 ** 3)
+        total_gb = config.traffic_limit_bytes / (1024 ** 3)
+        pct = (used_bytes / config.traffic_limit_bytes * 100) if config.traffic_limit_bytes else 0
+        return fa.SERVICE_CARD.format(
+            badge=badge,
+            index=to_persian_digits(index),
+            plan_name=plan_name,
+            bar=bar,
+            used_gb=used_gb,
+            total_gb=total_gb,
+            pct=pct,
+            expiry_jalali=expiry_str,
+            days_left=days_str,
+        )
+
+    expired = not is_active or (expiry is not None and expiry < now)
+
+    if is_active and expiry is None and duration_days:
+        expiry_str = fa.DELAYED_START_FMT.format(n=to_persian_digits(duration_days))
+        days_str = expiry_str
+        bar = traffic_bar(used_bytes, config.traffic_limit_bytes, width=10)
+        used_gb = used_bytes / (1024 ** 3)
+        total_gb = config.traffic_limit_bytes / (1024 ** 3)
+        pct = (used_bytes / config.traffic_limit_bytes * 100) if config.traffic_limit_bytes else 0
+        return fa.SERVICE_CARD.format(
+            badge=badge,
+            index=to_persian_digits(index),
+            plan_name=plan_name,
+            bar=bar,
+            used_gb=used_gb,
+            total_gb=total_gb,
+            pct=pct,
+            expiry_jalali=expiry_str,
+            days_left=days_str,
+        )
+
+    if expired:
         expiry_str = to_jalali(expiry) if expiry else "—"
         return fa.SERVICE_EXPIRED_CARD.format(
             badge=badge,
@@ -96,14 +139,18 @@ async def _render_services(target, user: User, session: AsyncSession, **kwargs) 
 
     for i, config in enumerate(active_configs, start=1):
         used_bytes = config.traffic_used_bytes
+        panel_expiry_ms: int | None = None
         if xui:
             try:
                 traffic = await xui.get_client_traffic(config.panel_email)
                 used_bytes = traffic.used_bytes
+                panel_expiry_ms = traffic.expiry_time
             except XUIError:
                 pass
 
-        text_parts.append(_service_card_text(i, config, used_bytes, plans))
+        text_parts.append(
+            _service_card_text(i, config, used_bytes, plans, panel_expiry_ms)
+        )
         builder.button(
             text=f"🔗 لینک سرویس {to_persian_digits(i)}",
             callback_data=f"my_services:link:{config.id}",

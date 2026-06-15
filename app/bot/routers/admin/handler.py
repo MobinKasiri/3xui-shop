@@ -24,8 +24,8 @@ async def _dashboard_text(session: AsyncSession, xui_service=None) -> str:
     today_users = await User.today_count(session)
     total_users = await User.count(session)
     active_configs = await VPNConfig.count_active(session)
-    today_rev = await Transaction.today_revenue(session)
-    total_rev = await Transaction.total_revenue(session)
+    today_rev = int(await Transaction.today_revenue(session))
+    total_rev = int(await Transaction.total_revenue(session))
 
     cpu = ram = "—"
     xray_state = "—"

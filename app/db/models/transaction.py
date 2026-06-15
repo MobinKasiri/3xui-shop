@@ -97,9 +97,9 @@ class Transaction(Base):
 
     @classmethod
     async def today_revenue(cls, session: AsyncSession) -> int:
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta
         from sqlalchemy import func as f
-        today_start = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         tomorrow = today_start + timedelta(days=1)
         result = await session.execute(
             select(f.coalesce(f.sum(cls.amount), 0))
@@ -108,7 +108,7 @@ class Transaction(Base):
             .where(cls.confirmed_at >= today_start)
             .where(cls.confirmed_at < tomorrow)
         )
-        return result.scalar_one() or 0
+        return int(result.scalar_one() or 0)
 
     @classmethod
     async def total_revenue(cls, session: AsyncSession) -> int:
@@ -118,4 +118,4 @@ class Transaction(Base):
             .where(cls.status == TX_CONFIRMED)
             .where(cls.amount > 0)
         )
-        return result.scalar_one() or 0
+        return int(result.scalar_one() or 0)

@@ -46,7 +46,14 @@ async def cb_renewal_start(callback: CallbackQuery, user: User, session: AsyncSe
     for i, c in enumerate(active, 1):
         plan = plans.get(c.plan_key, {})
         label = plan.get("name", c.plan_key or f"سرویس {to_persian_digits(i)}")
-        expiry_str = to_jalali(c.expiry_date) if c.expiry_date else "—"
+        if c.expiry_date:
+            expiry_str = to_jalali(c.expiry_date)
+        elif plan.get("duration_days"):
+            expiry_str = fa.DELAYED_START_FMT.format(
+                n=to_persian_digits(plan["duration_days"])
+            )
+        else:
+            expiry_str = "—"
         builder.button(
             text=f"{to_persian_digits(i)}) {label} — انقضا: {expiry_str}",
             callback_data=f"renewal:config:{c.id}",
@@ -71,7 +78,13 @@ async def cb_renewal_config(callback: CallbackQuery, user: User, session: AsyncS
     plan_name = plan.get("name", config.plan_key or "سرویس")
     remaining_bytes = config.traffic_remaining_bytes
     total_gb = config.traffic_limit_gb
-    expiry_str = to_jalali(config.expiry_date) if config.expiry_date else "—"
+    expiry_str = (
+        to_jalali(config.expiry_date)
+        if config.expiry_date
+        else fa.DELAYED_START_FMT.format(n=to_persian_digits(plan.get("duration_days", 30)))
+        if plan
+        else "—"
+    )
 
     text = fa.RENEWAL_SELECT_PLAN.format(
         plan_name=plan_name,
@@ -112,11 +125,38 @@ async def cb_renewal_pay(
     # Compute preview
     remaining_gb = config.traffic_remaining_bytes / (1024 ** 3)
     new_total_gb = remaining_gb + plan["traffic_gb"]
-    from app.bot.utils.jalali import add_days_ms, ms_to_datetime, now_ms
-    current_ms = int(config.expiry_date.timestamp() * 1000) if config.expiry_date else 0
-    new_expiry_ms = add_days_ms(max(current_ms, now_ms()), plan["duration_days"])
-    new_expiry_dt = ms_to_datetime(new_expiry_ms)
-    new_expiry_jalali = to_jalali(new_expiry_dt) if new_expiry_dt else "—"
+    from app.bot.utils.jalali import extend_expiry_ms, is_delayed_start, ms_to_datetime
+
+    panel_expiry_ms = 0
+    xui = kwargs.get("xui_service")
+    if xui:
+        try:
+            panel_expiry_ms = (await xui.get_client_traffic(config.panel_email)).expiry_time
+        except Exception:
+            pass
+
+    if panel_expiry_ms < 0:
+        current_ms = panel_expiry_ms
+    elif panel_expiry_ms > 0:
+        current_ms = panel_expiry_ms
+    elif config.expiry_date:
+        current_ms = int(config.expiry_date.timestamp() * 1000)
+    else:
+        current_ms = 0
+
+    delayed = is_delayed_start(current_ms) or (
+        vpn_service and vpn_service.start_after_first_use and current_ms == 0
+    )
+    new_expiry_ms = extend_expiry_ms(
+        current_ms, plan["duration_days"], delayed_start=delayed
+    )
+    if is_delayed_start(new_expiry_ms):
+        new_expiry_jalali = fa.DELAYED_START_FMT.format(
+            n=to_persian_digits(abs(new_expiry_ms) // 86_400_000)
+        )
+    else:
+        new_expiry_dt = ms_to_datetime(new_expiry_ms)
+        new_expiry_jalali = to_jalali(new_expiry_dt) if new_expiry_dt else "—"
 
     text = fa.RENEWAL_SUMMARY.format(
         plan_name=plan["name"],
@@ -179,7 +219,11 @@ async def cb_renewal_confirm(
         await deduct(session, user, price, f"تمدید {plan['name']}", tx_type=TX_RENEWAL, plan_key=plan_key, config_id=config_id)
         updated = await vpn_service.renew_config(session, config, plan["traffic_gb"] * 1024, plan["duration_days"])
 
-        expiry_jalali = to_jalali(updated.expiry_date) if updated.expiry_date else "—"
+        expiry_jalali = (
+            to_jalali(updated.expiry_date)
+            if updated.expiry_date
+            else fa.DELAYED_START_FMT.format(n=to_persian_digits(plan["duration_days"]))
+        )
         await callback.message.edit_text(
             fa.RENEWAL_SUCCESS.format(
                 traffic_gb=plan["traffic_gb"],
