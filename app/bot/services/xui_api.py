@@ -11,6 +11,7 @@ All public methods return typed dataclasses or raise one of:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -132,44 +133,63 @@ class XUIApiService:
     async def login(self) -> None:
         """Authenticate via cookie. Raises XUIAuthError on failure."""
         session = await self._get_session()
-        url = self._base + "/login"
-        payload = {
+
+        # Browser panel sends username + password as form-urlencoded only.
+        form_payload = {
             "username": self._config.USERNAME,
             "password": self._config.PASSWORD,
-            "twoFactorCode": "",
         }
+        json_payload = {**form_payload, "twoFactorCode": ""}
+
+        browser_headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ),
+            "Accept": "application/json, text/plain, */*",
+            "Origin": self._config.HOST.rstrip("/"),
+            "Referer": self._base.rstrip("/") + "/",
+        }
+
+        login_urls = [
+            self._base.rstrip("/") + "/login",
+            self._base.rstrip("/"),
+        ]
+
         last_error = "unknown"
         try:
-            # Try JSON first (OpenAPI spec), then form-urlencoded (most panels).
-            for use_json in (True, False):
-                try:
-                    kwargs: dict[str, Any] = {}
-                    if use_json:
-                        kwargs["json"] = payload
-                    else:
-                        kwargs["data"] = payload
-                    async with session.post(url, **kwargs) as resp:
-                        try:
-                            data = await resp.json(content_type=None)
-                        except Exception:
-                            text = await resp.text()
+            for url in login_urls:
+                # Form-urlencoded first — matches browser DevTools "Form Data"
+                for mode, kwargs in (
+                    ("form", {"data": form_payload}),
+                    ("json", {"json": json_payload}),
+                ):
+                    try:
+                        async with session.post(
+                            url, headers=browser_headers, **kwargs
+                        ) as resp:
+                            body_text = await resp.text()
                             data = None
-                            last_error = f"HTTP {resp.status}: {text[:200]}"
-                        if data and data.get("success"):
-                            self._logged_in = True
-                            logger.info(
-                                "3X-UI panel login successful (%s).",
-                                "json" if use_json else "form",
-                            )
-                            return
-                        if data:
-                            last_error = data.get("msg", f"HTTP {resp.status}")
-                        elif not last_error.startswith("HTTP"):
-                            last_error = f"HTTP {resp.status}"
-                except aiohttp.ClientError as e:
-                    last_error = str(e)
-                    if not use_json:
-                        raise XUINetworkError(str(e)) from e
+                            try:
+                                data = json.loads(body_text)
+                            except Exception:
+                                pass
+
+                            if data and data.get("success"):
+                                self._logged_in = True
+                                logger.info(
+                                    "3X-UI login OK — url=%s mode=%s",
+                                    url, mode,
+                                )
+                                return
+
+                            msg = (data or {}).get("msg") if data else body_text[:300]
+                            last_error = f"{url} [{mode}] HTTP {resp.status}: {msg}"
+                            logger.debug("Login attempt failed: %s", last_error)
+
+                    except aiohttp.ClientError as e:
+                        last_error = f"{url} [{mode}]: {e}"
+
             raise XUIAuthError(f"Login failed: {last_error}")
         except XUIAuthError:
             raise

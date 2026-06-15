@@ -18,8 +18,14 @@ REALITY_INBOUND_ID: int | None = None
 async def bootstrap_inbounds(config: Config) -> bool:
     """Login to panel and cache WS + Reality inbound IDs. Returns True on success."""
     global xui_service, WS_INBOUND_ID, REALITY_INBOUND_ID
-    xui_service = XUIApiService(config.xui)
+
+    if xui_service is None:
+        xui_service = XUIApiService(config.xui)
+    else:
+        xui_service._logged_in = False
+
     try:
+        logger.info("Connecting to XUI panel at %s", config.xui.base_url)
         await xui_service.login()
         ws_id, reality_id = await xui_service.find_inbound_ids(
             ws_name=config.xui.WS_INBOUND_NAME,
@@ -34,8 +40,9 @@ async def bootstrap_inbounds(config: Config) -> bool:
         return True
     except Exception as e:
         logger.warning(
-            f"⚠️ Inbound bootstrap FAILED: {e}. "
-            "VPN creation disabled until panel is reachable."
+            "⚠️ Inbound bootstrap FAILED: %s. "
+            "VPN creation disabled until panel is reachable.",
+            e,
         )
         WS_INBOUND_ID = None
         REALITY_INBOUND_ID = None
