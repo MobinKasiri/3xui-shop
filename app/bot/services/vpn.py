@@ -139,7 +139,7 @@ class VPNService:
             traffic_used_bytes=used_bytes,
             expiry_date=new_expiry_dt,
             is_active=True,
-            renewed_at=datetime.now(tz=timezone.utc),
+            renewed_at=datetime.utcnow(),
         )
         await session.refresh(config)
         return config

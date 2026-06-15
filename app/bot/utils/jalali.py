@@ -36,10 +36,10 @@ def days_until(dt: datetime) -> int:
 
 
 def ms_to_datetime(ms: int) -> datetime | None:
-    """Convert millisecond Unix timestamp to datetime. Returns None if 0."""
+    """Convert millisecond Unix timestamp to naive UTC datetime for DB storage."""
     if ms == 0:
         return None
-    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc)
+    return datetime.utcfromtimestamp(ms / 1000)
 
 
 def datetime_to_ms(dt: datetime) -> int:
