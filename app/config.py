@@ -9,7 +9,7 @@ from environs import Env
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_DATA_DIR = BASE_DIR / "data"
 DEFAULT_BOT_HOST = "0.0.0.0"
-DEFAULT_BOT_PORT = 8080
+DEFAULT_BOT_PORT = 8090
 
 logger = logging.getLogger(__name__)
 
