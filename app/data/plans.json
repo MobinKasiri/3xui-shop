@@ -1,0 +1,16 @@
+{
+  "vip": {
+    "name": "سرویس اختصاصی VIP",
+    "emoji": "⭐",
+    "plans": [
+      {"id": "vip_1g_30d", "gb": 1, "days": 30, "price": 15000},
+      {"id": "vip_2g_30d", "gb": 2, "days": 30, "price": 29000},
+      {"id": "vip_3g_30d", "gb": 3, "days": 30, "price": 42000},
+      {"id": "vip_4g_30d", "gb": 4, "days": 30, "price": 55000},
+      {"id": "vip_5g_30d", "gb": 5, "days": 30, "price": 65000},
+      {"id": "vip_10g_30d", "gb": 10, "days": 30, "price": 125000},
+      {"id": "vip_20g_30d", "gb": 20, "days": 30, "price": 235000},
+      {"id": "vip_30g_30d", "gb": 30, "days": 30, "price": 330000}
+    ]
+  }
+}
