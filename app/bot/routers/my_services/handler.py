@@ -93,7 +93,7 @@ def _expiry_text(cfg: VPNConfig, panel_expiry_ms: int | None) -> str:
     if panel_expiry_ms is not None and is_delayed_start(panel_expiry_ms):
         return fa.DELAYED_START_FMT.format(n=to_persian_digits(delayed_start_days(panel_expiry_ms)))
     if cfg.expiry_date is None:
-        return fa.DELAYED_START_FMT.format(n=to_persian_digits(cfg.plan_days))
+        return fa.CONFIG_NOT_STARTED
     return to_jalali(cfg.expiry_date)
 
 

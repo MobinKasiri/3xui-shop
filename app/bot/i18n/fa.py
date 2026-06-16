@@ -282,6 +282,9 @@ CONFIG_GET_SUB_TEXT = (
     "این لینک را در اپ خود وارد کنید.\n"
     "⚠️ لینک اشتراک خصوصی است — با دیگران به اشتراک نگذارید."
 )
+DELAYED_START_FMT = "⏳ هنوز شروع نشده — شروع {n} روز پس از اولین اتصال"
+CONFIG_NOT_STARTED = "⏳ هنوز شروع نشده"
+
 CONFIG_DISABLED = "⏸ سرویس موقتاً غیرفعال شد."
 CONFIG_ENABLED = "▶️ سرویس مجدداً فعال شد."
 CONFIG_RESET_SUB_DONE = (
