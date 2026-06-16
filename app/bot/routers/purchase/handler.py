@@ -65,6 +65,7 @@ def _back_home_row() -> tuple[str, str]:
 
 def _format_plan_label(plan: dict) -> str:
     return fa.VIP_PLAN_BTN.format(
+        emoji=plan.get("emoji", "") + (" " if plan.get("emoji") else ""),
         gb=to_persian_digits(plan["gb"]),
         price=format_toman(plan["price"]),
     )
@@ -116,8 +117,8 @@ def _discount_keyboard() -> InlineKeyboardMarkup:
 
 def _method_keyboard(balance: int, required: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    if balance >= required:
-        builder.button(text=fa.PAY_WALLET_BTN, callback_data="buy:pay:wallet")
+    wallet_label = fa.PAY_WALLET_BTN.format(balance=format_toman(balance))
+    builder.button(text=wallet_label, callback_data="buy:pay:wallet")
     builder.button(text=fa.PAY_CARD_BTN, callback_data="buy:pay:card")
     builder.button(text=fa.BACK, callback_data="buy:back_to_discount")
     builder.button(text=fa.HOME, callback_data="main_menu")
@@ -136,24 +137,23 @@ def _card_keyboard(toman: int, rial: int, card: str) -> InlineKeyboardMarkup:
 
 
 def _render_plans_text(plans: list[dict]) -> str:
-    rows = [
-        fa.VIP_PLANS_TABLE_HEADER,
-        fa.VIP_PLANS_TABLE_TOP,
-        fa.VIP_PLANS_TABLE_HEAD,
-        fa.VIP_PLANS_TABLE_SEP,
-    ]
-    for plan in plans:
+    rows = [fa.VIP_PLANS_TABLE_HEADER]
+    for i, plan in enumerate(plans):
+        emoji = plan.get("emoji", "")
+        prefix = emoji + " " if emoji else ""
         rows.append(
             fa.VIP_PLANS_TABLE_ROW.format(
-                gb=f"{plan['gb']} GB",
-                days=f"{plan['days']} روز",
+                emoji=prefix,
+                gb=to_persian_digits(plan["gb"]),
+                days=to_persian_digits(plan["days"]),
                 price=format_toman(plan["price"]),
+                per_gb=format_toman(plan.get("per_gb", plan["price"] // plan["gb"])),
             )
         )
-    rows.append(fa.VIP_PLANS_TABLE_BOTTOM)
+        if i < len(plans) - 1:
+            rows.append(fa.VIP_PLANS_TABLE_SEP)
     rows.append("\n👇 پلن دلخواه را انتخاب کنید:")
-    table = "\n".join(rows)
-    return f"<pre>{table}</pre>" if False else table  # plain text — no <pre> for Persian
+    return "\n".join(rows)
 
 
 # ── entry: type screen ───────────────────────────────────────────────────────
