@@ -25,6 +25,7 @@ class User(Base):
     referral_code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     referred_by: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    channel_gate_passed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         default=func.now(), onupdate=func.now(), nullable=False

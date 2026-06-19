@@ -9,7 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
 from app.bot.routers.main_menu.handler import send_welcome
-from app.bot.services.required_channels import missing_channels
+from app.bot.services.required_channels import (
+    audit_channels,
+    missing_joined_channels,
+)
 from app.db.models import User
 
 logger = logging.getLogger(__name__)
@@ -29,7 +32,8 @@ async def cb_channel_joined(
     bot = callback.bot
     channels = config.bot.REQUIRED_CHANNELS if config else ()
 
-    missing = await missing_channels(bot, user.tg_id, channels)
+    audits = await audit_channels(bot, user.tg_id, channels)
+    missing = missing_joined_channels(audits)
     if missing:
         names = ", ".join(ch.label for ch in missing)
         await callback.answer(
@@ -37,6 +41,9 @@ async def cb_channel_joined(
             show_alert=True,
         )
         return
+
+    await User.update(session, user.tg_id, channel_gate_passed=True)
+    user.channel_gate_passed = True
 
     await send_welcome(callback, user, session, is_new_user=is_new_user, **kwargs)
     await callback.answer()

@@ -59,6 +59,15 @@ async def on_startup(bot: Bot, config: Config, db: Database, **kwargs) -> None:
 
     await bootstrap_with_retries(config)
 
+    if config.bot.REQUIRED_CHANNELS:
+        logger.info(
+            "Required channels (%s): %s",
+            len(config.bot.REQUIRED_CHANNELS),
+            ", ".join(ch.chat_id for ch in config.bot.REQUIRED_CHANNELS),
+        )
+    else:
+        logger.info("Required channels: disabled")
+
     if config.bot.USE_POLLING:
         # Production may have left a webhook on this token — polling cannot run until it is cleared.
         try:

@@ -6,9 +6,13 @@ from typing import Any, Awaitable, Callable
 
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject, Update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
-from app.bot.services.required_channels import channel_gate_keyboard
+from app.bot.services.required_channels import (
+    channel_gate_keyboard,
+    should_block_for_channels,
+)
 from app.config import Config
 from app.db.models import User
 
@@ -16,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 
 def _inner_event(event: TelegramObject) -> Message | CallbackQuery | None:
-    """Update-level middleware receives Update; routers receive Message/CallbackQuery."""
     if isinstance(event, Update):
         return event.event  # type: ignore[return-value]
     if isinstance(event, (Message, CallbackQuery)):
@@ -34,6 +37,7 @@ class ChannelGateMiddleware(BaseMiddleware):
         config: Config | None = data.get("config")
         user: User | None = data.get("user")
         bot = data.get("bot")
+        session: AsyncSession | None = data.get("session")
         inner = _inner_event(event)
 
         if (
@@ -51,10 +55,19 @@ class ChannelGateMiddleware(BaseMiddleware):
         if isinstance(inner, CallbackQuery) and inner.data == "channel:joined":
             return await handler(event, data)
 
-        from app.bot.services.required_channels import user_joined_all
+        block, missing = await should_block_for_channels(
+            bot,
+            user.tg_id,
+            config.bot.REQUIRED_CHANNELS,
+            gate_acknowledged=user.channel_gate_passed,
+        )
 
-        if await user_joined_all(bot, user.tg_id, config.bot.REQUIRED_CHANNELS):
+        if not block:
             return await handler(event, data)
+
+        if user.channel_gate_passed and missing and session is not None:
+            await User.update(session, user.tg_id, channel_gate_passed=False)
+            user.channel_gate_passed = False
 
         markup = channel_gate_keyboard(config.bot.REQUIRED_CHANNELS)
         try:

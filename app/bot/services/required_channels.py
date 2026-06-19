@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from enum import Enum
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
@@ -14,6 +15,12 @@ logger = logging.getLogger(__name__)
 _MEMBER_STATUSES = frozenset({"creator", "administrator", "member", "restricted"})
 
 
+class VerifyResult(Enum):
+    JOINED = "joined"
+    NOT_JOINED = "not_joined"
+    UNVERIFIABLE = "unverifiable"
+
+
 @dataclass(frozen=True)
 class RequiredChannel:
     chat_id: str
@@ -21,12 +28,18 @@ class RequiredChannel:
     url: str
 
 
+@dataclass(frozen=True)
+class ChannelAudit:
+    channel: RequiredChannel
+    result: VerifyResult
+
+
 def parse_required_channels(raw: str) -> tuple[RequiredChannel, ...]:
     """Parse REQUIRED_CHANNELS env value.
 
     Formats:
       @channel1,@channel2
-      Nexora News|@nexoranode,VIP|https://t.me/nexora_vip
+      Nexora|@nexoranode,Movies|https://t.me/nexora_movies
     """
     if not raw.strip():
         return ()
@@ -69,33 +82,63 @@ def channel_gate_keyboard(channels: tuple[RequiredChannel, ...]) -> InlineKeyboa
     return builder.as_markup()
 
 
-async def missing_channels(
+async def audit_channels(
     bot: Bot, user_id: int, channels: tuple[RequiredChannel, ...]
-) -> list[RequiredChannel]:
-    """Return channels the user has not joined yet."""
-    missing: list[RequiredChannel] = []
+) -> list[ChannelAudit]:
+    audits: list[ChannelAudit] = []
     for channel in channels:
         try:
             member = await bot.get_chat_member(channel.chat_id, user_id)
-            if member.status not in _MEMBER_STATUSES:
-                missing.append(channel)
+            result = (
+                VerifyResult.JOINED
+                if member.status in _MEMBER_STATUSES
+                else VerifyResult.NOT_JOINED
+            )
         except TelegramBadRequest as exc:
-            # Bot cannot verify (not admin in channel, wrong @name, etc.) —
-            # do not block all users because of a config mistake.
             logger.warning(
-                "Skipping channel %s — bot cannot verify membership: %s. "
-                "Add the bot as admin in the channel or fix REQUIRED_CHANNELS.",
+                "Cannot verify %s for user %s: %s — add bot as channel admin.",
                 channel.chat_id,
+                user_id,
                 exc,
             )
+            result = VerifyResult.UNVERIFIABLE
         except Exception as exc:
-            logger.warning("Channel check failed for %s: %s", channel.chat_id, exc)
-    return missing
+            logger.warning("Channel check error for %s: %s", channel.chat_id, exc)
+            result = VerifyResult.UNVERIFIABLE
+        audits.append(ChannelAudit(channel=channel, result=result))
+    return audits
 
 
-async def user_joined_all(
-    bot: Bot, user_id: int, channels: tuple[RequiredChannel, ...]
-) -> bool:
+def missing_joined_channels(audits: list[ChannelAudit]) -> list[RequiredChannel]:
+    """Channels the user has definitely not joined (bot could verify)."""
+    return [
+        item.channel
+        for item in audits
+        if item.result == VerifyResult.NOT_JOINED
+    ]
+
+
+def has_unverifiable_channels(audits: list[ChannelAudit]) -> bool:
+    return any(item.result == VerifyResult.UNVERIFIABLE for item in audits)
+
+
+async def should_block_for_channels(
+    bot: Bot,
+    user_id: int,
+    channels: tuple[RequiredChannel, ...],
+    *,
+    gate_acknowledged: bool,
+) -> tuple[bool, list[RequiredChannel]]:
+    """Return (show_gate, missing_verified_channels)."""
     if not channels:
-        return True
-    return not await missing_channels(bot, user_id, channels)
+        return False, []
+
+    audits = await audit_channels(bot, user_id, channels)
+    missing = missing_joined_channels(audits)
+    if missing:
+        return True, missing
+
+    if has_unverifiable_channels(audits) and not gate_acknowledged:
+        return True, []
+
+    return False, []
