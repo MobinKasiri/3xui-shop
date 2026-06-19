@@ -2,7 +2,7 @@
 VPN config service — creates, deletes, toggles configs via 3X-UI.
 
 Each VPN config maps to a single panel client (email = service_name@nexora.vpn)
-attached to both WS and Reality inbounds.
+attached to one or more panel inbounds.
 """
 from __future__ import annotations
 
@@ -53,23 +53,17 @@ class VPNService:
     def __init__(
         self,
         xui: XUIApiService,
-        ws_inbound_id: int,
-        reality_inbound_id: int,
+        inbound_ids: list[int],
         sub_base_url: str,
         *,
         start_after_first_use: bool = True,
         default_duration_days: int = 30,
     ) -> None:
         self.xui = xui
-        self.ws_id = ws_inbound_id
-        self.reality_id = reality_inbound_id
+        self.inbound_ids = list(inbound_ids)
         self.sub_base_url = sub_base_url.rstrip("/") + "/"
         self.start_after_first_use = start_after_first_use
         self.default_duration_days = default_duration_days
-
-    @property
-    def inbound_ids(self) -> list[int]:
-        return [self.ws_id, self.reality_id]
 
     def sub_url(self, sub_id: str) -> str:
         return self.sub_base_url + sub_id

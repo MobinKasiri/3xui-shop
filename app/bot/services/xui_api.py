@@ -257,59 +257,37 @@ class XUIApiService:
             ))
         return result
 
-    async def find_inbound_ids(
-        self, ws_name: str, reality_name: str
-    ) -> tuple[int, int]:
-        """Return (ws_inbound_id, reality_inbound_id). Raises XUINotFound if missing."""
+    async def enabled_inbound_ids(
+        self, filter_names: tuple[str, ...] = ()
+    ) -> list[int]:
+        """Return IDs of all enabled inbounds (optional name filter)."""
         inbounds = await self.list_inbounds()
-        available = [(ib.id, ib.remark, ib.port) for ib in inbounds]
-        logger.info(f"Panel inbounds: {available}")
+        enabled = [ib for ib in inbounds if ib.enable]
+
+        if not enabled:
+            raise XUINotFound("No enabled inbounds on panel.")
 
         def _norm(s: str) -> str:
             return " ".join(s.split())
 
-        ws_name_n = _norm(ws_name)
-        reality_name_n = _norm(reality_name)
+        if filter_names:
+            filters = {_norm(name) for name in filter_names}
+            selected = [ib for ib in enabled if _norm(ib.remark) in filters]
+            if not selected:
+                available = [ib.remark for ib in enabled]
+                raise XUINotFound(
+                    f"Inbound filter {list(filter_names)} matched nothing. "
+                    f"Enabled inbounds: {available}"
+                )
+        else:
+            selected = enabled
 
-        ws_id: int | None = None
-        reality_id: int | None = None
-        for ib in inbounds:
-            remark_n = _norm(ib.remark)
-            if remark_n == ws_name_n:
-                ws_id = ib.id
-            if remark_n == reality_name_n:
-                reality_id = ib.id
-
-        # Fallback: match by typical ports (WS=8080, Reality=443)
-        if ws_id is None:
-            for ib in inbounds:
-                if ib.port == 8080 and ib.enable:
-                    ws_id = ib.id
-                    logger.warning(
-                        f"WS inbound matched by port 8080: id={ib.id} remark={ib.remark!r}"
-                    )
-                    break
-        if reality_id is None:
-            for ib in inbounds:
-                if ib.port == 443 and ib.enable:
-                    reality_id = ib.id
-                    logger.warning(
-                        f"Reality inbound matched by port 443: id={ib.id} remark={ib.remark!r}"
-                    )
-                    break
-
-        if ws_id is None:
-            names = [ib.remark for ib in inbounds]
-            raise XUINotFound(
-                f"Inbound '{ws_name}' not found. Available remarks: {names}"
-            )
-        if reality_id is None:
-            names = [ib.remark for ib in inbounds]
-            raise XUINotFound(
-                f"Inbound '{reality_name}' not found. Available remarks: {names}"
-            )
-        logger.info(f"Inbound IDs — WS: {ws_id}, Reality: {reality_id}")
-        return ws_id, reality_id
+        ids = [ib.id for ib in selected]
+        logger.info(
+            "Enabled inbounds selected: %s",
+            [(ib.id, ib.remark, ib.port) for ib in selected],
+        )
+        return ids
 
     # ── Clients ───────────────────────────────────────────────────────────────
 

@@ -36,8 +36,7 @@ class XUIConfig:
     PASSWORD: str
     TOKEN: str | None
     SUB_BASE_URL: str
-    WS_INBOUND_NAME: str
-    REALITY_INBOUND_NAME: str
+    INBOUND_FILTER: tuple[str, ...] = ()
     START_AFTER_FIRST_USE: bool = True
     DEFAULT_DURATION_DAYS: int = 30
 
@@ -182,6 +181,13 @@ def _load_plans(env: Env) -> tuple[dict, Path]:
     return _read_plans_file(path), path
 
 
+def _parse_inbound_filter(env: Env) -> tuple[str, ...]:
+    raw = os.environ.get("XUI_INBOUND_FILTER", "").strip()
+    if not raw:
+        return ()
+    return tuple(part.strip() for part in raw.split(",") if part.strip())
+
+
 def load_config() -> Config:
     env = Env()
     env.read_env()
@@ -235,8 +241,7 @@ def load_config() -> Config:
             PASSWORD=env.str("XUI_PASSWORD"),
             TOKEN=xui_token,
             SUB_BASE_URL=env.str("XUI_SUB_BASE_URL", default="https://s.nexoranode.xyz:2096/s/"),
-            WS_INBOUND_NAME=env.str("XUI_WS_INBOUND_NAME", default="NX-WS"),
-            REALITY_INBOUND_NAME=env.str("XUI_REALITY_INBOUND_NAME", default="NX-Reality"),
+            INBOUND_FILTER=_parse_inbound_filter(env),
             START_AFTER_FIRST_USE=env.bool("XUI_START_AFTER_FIRST_USE", default=True),
             DEFAULT_DURATION_DAYS=_int_env(env, "XUI_DEFAULT_DURATION_DAYS", default=30),
         ),

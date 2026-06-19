@@ -11,13 +11,12 @@ from app.config import Config
 logger = logging.getLogger(__name__)
 
 xui_service: XUIApiService | None = None
-WS_INBOUND_ID: int | None = None
-REALITY_INBOUND_ID: int | None = None
+INBOUND_IDS: list[int] | None = None
 
 
 async def bootstrap_inbounds(config: Config) -> bool:
-    """Login to panel and cache WS + Reality inbound IDs. Returns True on success."""
-    global xui_service, WS_INBOUND_ID, REALITY_INBOUND_ID
+    """Login to panel and cache inbound IDs. Returns True on success."""
+    global xui_service, INBOUND_IDS
 
     if xui_service is None:
         xui_service = XUIApiService(config.xui)
@@ -31,16 +30,11 @@ async def bootstrap_inbounds(config: Config) -> bool:
             xui_service._logged_in = True
         else:
             await xui_service.login()
-        ws_id, reality_id = await xui_service.find_inbound_ids(
-            ws_name=config.xui.WS_INBOUND_NAME,
-            reality_name=config.xui.REALITY_INBOUND_NAME,
+        inbound_ids = await xui_service.enabled_inbound_ids(
+            filter_names=config.xui.INBOUND_FILTER,
         )
-        WS_INBOUND_ID = ws_id
-        REALITY_INBOUND_ID = reality_id
-        logger.info(
-            f"✅ Inbound bootstrap OK — WS: {ws_id} ({config.xui.WS_INBOUND_NAME}), "
-            f"Reality: {reality_id} ({config.xui.REALITY_INBOUND_NAME})"
-        )
+        INBOUND_IDS = inbound_ids
+        logger.info("✅ Inbound bootstrap OK — ids=%s", inbound_ids)
         return True
     except Exception as e:
         logger.warning(
@@ -48,8 +42,7 @@ async def bootstrap_inbounds(config: Config) -> bool:
             "VPN creation disabled until panel is reachable.",
             e,
         )
-        WS_INBOUND_ID = None
-        REALITY_INBOUND_ID = None
+        INBOUND_IDS = None
         return False
 
 
@@ -64,11 +57,10 @@ async def bootstrap_with_retries(config: Config, retries: int = 3) -> bool:
 
 
 def get_vpn_service(config: Config) -> VPNService | None:
-    if WS_INBOUND_ID and REALITY_INBOUND_ID and xui_service:
+    if INBOUND_IDS and xui_service:
         return VPNService(
             xui=xui_service,
-            ws_inbound_id=WS_INBOUND_ID,
-            reality_inbound_id=REALITY_INBOUND_ID,
+            inbound_ids=INBOUND_IDS,
             sub_base_url=config.xui.SUB_BASE_URL,
             start_after_first_use=config.xui.START_AFTER_FIRST_USE,
             default_duration_days=config.xui.DEFAULT_DURATION_DAYS,
