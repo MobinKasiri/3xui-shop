@@ -157,45 +157,49 @@ class XUIApiService:
             "Referer": self._base.rstrip("/") + "/",
         }
 
-        login_urls = [
-            self._base.rstrip("/") + "/login",
-            self._base.rstrip("/"),
-        ]
-
+        login_url = self._base.rstrip("/") + "/login"
         last_error = "unknown"
+        saw_403 = False
         try:
-            for url in login_urls:
-                # Form-urlencoded first — matches browser DevTools "Form Data"
-                for mode, kwargs in (
-                    ("form", {"data": form_payload}),
-                    ("json", {"json": json_payload}),
-                ):
-                    try:
-                        async with session.post(
-                            url, headers=browser_headers, **kwargs
-                        ) as resp:
-                            body_text = await resp.text()
-                            data = None
-                            try:
-                                data = json.loads(body_text)
-                            except Exception:
-                                pass
+            # Form-urlencoded first — matches browser DevTools "Form Data"
+            for mode, kwargs in (
+                ("form", {"data": form_payload}),
+                ("json", {"json": json_payload}),
+            ):
+                try:
+                    async with session.post(
+                        login_url, headers=browser_headers, **kwargs
+                    ) as resp:
+                        body_text = await resp.text()
+                        data = None
+                        try:
+                            data = json.loads(body_text)
+                        except Exception:
+                            pass
 
-                            if data and data.get("success"):
-                                self._logged_in = True
-                                logger.info(
-                                    "3X-UI login OK — url=%s mode=%s",
-                                    url, mode,
-                                )
-                                return
+                        if data and data.get("success"):
+                            self._logged_in = True
+                            logger.info(
+                                "3X-UI login OK — url=%s mode=%s",
+                                login_url, mode,
+                            )
+                            return
 
-                            msg = (data or {}).get("msg") if data else body_text[:300]
-                            last_error = f"{url} [{mode}] HTTP {resp.status}: {msg}"
-                            logger.debug("Login attempt failed: %s", last_error)
+                        msg = (data or {}).get("msg") if data else body_text[:300]
+                        last_error = f"{login_url} [{mode}] HTTP {resp.status}: {msg}"
+                        logger.warning("Login attempt failed: %s", last_error)
+                        if resp.status == 403:
+                            saw_403 = True
 
-                    except aiohttp.ClientError as e:
-                        last_error = f"{url} [{mode}]: {e}"
+                except aiohttp.ClientError as e:
+                    last_error = f"{login_url} [{mode}]: {e}"
 
+            if saw_403:
+                raise XUIAuthError(
+                    f"Login blocked (HTTP 403) at {login_url}. "
+                    "Set XUI_TOKEN in .env (Panel → Settings → Security → API Token) "
+                    "or allow the bot server IP in panel/nginx."
+                )
             raise XUIAuthError(f"Login failed: {last_error}")
         except XUIAuthError:
             raise

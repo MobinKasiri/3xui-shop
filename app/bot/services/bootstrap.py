@@ -27,7 +27,8 @@ async def bootstrap_inbounds(config: Config) -> bool:
     try:
         logger.info("Connecting to XUI panel at %s", config.xui.base_url)
         if config.xui.TOKEN:
-            logger.info("Using Bearer token auth — skipping login.")
+            logger.info("Using Bearer token auth — skipping cookie login.")
+            xui_service._logged_in = True
         else:
             await xui_service.login()
         ws_id, reality_id = await xui_service.find_inbound_ids(

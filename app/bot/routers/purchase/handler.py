@@ -458,7 +458,7 @@ async def cb_pay_wallet(
 
     if user.balance < final_amount:
         await callback.answer(
-            fa.ERRORS["insufficient_balance"].format(
+            fa.ERRORS["insufficient_balance_alert"].format(
                 balance=format_toman(user.balance),
                 required=format_toman(final_amount),
                 shortage=format_toman(final_amount - user.balance),
@@ -467,12 +467,17 @@ async def cb_pay_wallet(
         )
         return
 
+    vpn_service = kwargs.get("vpn_service")
+    if vpn_service is None:
+        await callback.answer(fa.ERRORS["vpn_unavailable"], show_alert=True)
+        return
+
     await callback.message.edit_text(fa.WAIT_CREATING)
     await callback.answer()
 
     try:
         results = await _create_configs_for_user(
-            session, user, data, kwargs.get("vpn_service")
+            session, user, data, vpn_service
         )
     except Exception:
         logger.exception("Wallet purchase: create_configs failed")
