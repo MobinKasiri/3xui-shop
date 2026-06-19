@@ -80,17 +80,16 @@ async def missing_channels(
             if member.status not in _MEMBER_STATUSES:
                 missing.append(channel)
         except TelegramBadRequest as exc:
+            # Bot cannot verify (not admin in channel, wrong @name, etc.) —
+            # do not block all users because of a config mistake.
             logger.warning(
-                "Cannot verify membership for %s (user=%s): %s. "
-                "Is the bot admin in that channel?",
+                "Skipping channel %s — bot cannot verify membership: %s. "
+                "Add the bot as admin in the channel or fix REQUIRED_CHANNELS.",
                 channel.chat_id,
-                user_id,
                 exc,
             )
-            missing.append(channel)
         except Exception as exc:
             logger.warning("Channel check failed for %s: %s", channel.chat_id, exc)
-            missing.append(channel)
     return missing
 
 

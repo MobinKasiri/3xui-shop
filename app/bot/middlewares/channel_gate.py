@@ -5,7 +5,7 @@ import logging
 from typing import Any, Awaitable, Callable
 
 from aiogram import BaseMiddleware
-from aiogram.types import CallbackQuery, Message, TelegramObject
+from aiogram.types import CallbackQuery, Message, TelegramObject, Update
 
 from app.bot.i18n import fa
 from app.bot.services.required_channels import channel_gate_keyboard
@@ -13,6 +13,15 @@ from app.config import Config
 from app.db.models import User
 
 logger = logging.getLogger(__name__)
+
+
+def _inner_event(event: TelegramObject) -> Message | CallbackQuery | None:
+    """Update-level middleware receives Update; routers receive Message/CallbackQuery."""
+    if isinstance(event, Update):
+        return event.event  # type: ignore[return-value]
+    if isinstance(event, (Message, CallbackQuery)):
+        return event
+    return None
 
 
 class ChannelGateMiddleware(BaseMiddleware):
@@ -25,19 +34,21 @@ class ChannelGateMiddleware(BaseMiddleware):
         config: Config | None = data.get("config")
         user: User | None = data.get("user")
         bot = data.get("bot")
+        inner = _inner_event(event)
 
         if (
             not config
             or not config.bot.REQUIRED_CHANNELS
             or user is None
             or bot is None
+            or inner is None
         ):
             return await handler(event, data)
 
         if user.tg_id in config.bot.ADMINS:
             return await handler(event, data)
 
-        if isinstance(event, CallbackQuery) and event.data == "channel:joined":
+        if isinstance(inner, CallbackQuery) and inner.data == "channel:joined":
             return await handler(event, data)
 
         from app.bot.services.required_channels import user_joined_all
@@ -47,11 +58,11 @@ class ChannelGateMiddleware(BaseMiddleware):
 
         markup = channel_gate_keyboard(config.bot.REQUIRED_CHANNELS)
         try:
-            if isinstance(event, Message):
-                await event.answer(fa.CHANNEL_GATE_TEXT, reply_markup=markup)
-            elif isinstance(event, CallbackQuery):
-                await event.message.edit_text(fa.CHANNEL_GATE_TEXT, reply_markup=markup)
-                await event.answer()
+            if isinstance(inner, Message):
+                await inner.answer(fa.CHANNEL_GATE_TEXT, reply_markup=markup)
+            elif isinstance(inner, CallbackQuery):
+                await inner.message.edit_text(fa.CHANNEL_GATE_TEXT, reply_markup=markup)
+                await inner.answer()
         except Exception:
             logger.exception("Failed to show channel gate for user %s", user.tg_id)
         return None
