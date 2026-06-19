@@ -22,7 +22,10 @@ services:
       # Same file the admin panel writes — must stay in sync with panel PLANS_DIR_HOST
       - ../app/data/plans.json:/app/data/plans.json:rw
     networks:
-      - nexora_net
+      nexora_net:
+        aliases:
+          - bot
+          - nexoranode-bot
     logging:
       driver: json-file
       options:
