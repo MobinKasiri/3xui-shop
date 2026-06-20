@@ -63,10 +63,22 @@ def _back_home_row() -> tuple[str, str]:
 
 
 def _format_plan_label(plan: dict) -> str:
+    emoji = plan.get("emoji", "")
+    recommended = plan.get("recommended")
+    if recommended:
+        lead = "⭐ "
+        badge = " · پیشنهادی"
+    elif emoji:
+        lead = f"{emoji} "
+        badge = ""
+    else:
+        lead = ""
+        badge = ""
     return fa.VIP_PLAN_BTN.format(
-        emoji=plan.get("emoji", "") + (" " if plan.get("emoji") else ""),
+        lead=lead,
         gb=to_persian_digits(plan["gb"]),
         price=format_toman(plan["price"]),
+        badge=badge,
     )
 
 
@@ -84,7 +96,8 @@ def _plans_keyboard(plans: list[dict]) -> InlineKeyboardMarkup:
         builder.button(text=_format_plan_label(plan), callback_data=f"buy:plan:{plan['id']}")
     builder.button(text=fa.BACK, callback_data="buy:type")
     builder.button(text=fa.HOME, callback_data="main_menu")
-    builder.adjust(2)
+    # One plan per row; back + home share the last row
+    builder.adjust(*([1] * len(plans)), 2)
     return builder.as_markup()
 
 
@@ -136,24 +149,28 @@ def _card_keyboard(toman: int, rial: int, card: str) -> InlineKeyboardMarkup:
 
 
 def _render_plans_text(plans: list[dict]) -> str:
-    rows = [fa.VIP_PLANS_TABLE_HEADER]
-    for i, plan in enumerate(plans):
+    rows = [fa.VIP_PLANS_TABLE_HEADER, ""]
+    for plan in plans:
         emoji = plan.get("emoji", "")
-        prefix = emoji + " " if emoji else ""
-        badge = " — پیشنهادی" if plan.get("recommended") else ""
+        if plan.get("recommended"):
+            prefix = "⭐ "
+            badge = " · پیشنهادی"
+        elif emoji:
+            prefix = f"{emoji} "
+            badge = ""
+        else:
+            prefix = "▫️ "
+            badge = ""
         rows.append(
             fa.VIP_PLANS_TABLE_ROW.format(
                 emoji=prefix,
                 gb=to_persian_digits(plan["gb"]),
                 days=to_persian_digits(plan["days"]),
                 price=format_toman(plan["price"]),
-                per_gb=format_toman(plan.get("per_gb", plan["price"] // plan["gb"])),
                 badge=badge,
             )
         )
-        if i < len(plans) - 1:
-            rows.append(fa.VIP_PLANS_TABLE_SEP)
-    rows.append("\n👇 پلن دلخواه را انتخاب کنید:")
+    rows.append(fa.VIP_PLANS_TABLE_FOOTER)
     return "\n".join(rows)
 
 

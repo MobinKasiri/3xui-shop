@@ -324,10 +324,21 @@ class XUIApiService:
 
     # ── Clients ───────────────────────────────────────────────────────────────
 
+    async def get_client(self, email: str) -> dict:
+        """GET /panel/api/clients/get/{email} — includes uuid + inboundIds."""
+        data = await self._request(
+            "GET", f"/panel/api/clients/get/{self._email_path(email)}"
+        )
+        obj = data.get("obj") or {}
+        return obj if isinstance(obj, dict) else {}
+
     async def add_client(self, payload: ClientAddPayload) -> dict:
         """
         POST /panel/api/clients/add
         Creates the client and attaches it to inbound_ids in one call.
+
+        VLESS secret must be sent as ``uuid`` (panel DB field). The numeric
+        client row id is ``id`` — never put the VLESS UUID in ``id``.
         """
         client: dict[str, Any] = {
             "email": payload.email,
@@ -341,14 +352,16 @@ class XUIApiService:
             "reset": 0,
         }
         if payload.uuid:
-            client["id"] = payload.uuid
+            client["uuid"] = payload.uuid
         if payload.flow:
             client["flow"] = payload.flow
 
         body = {"client": client, "inboundIds": payload.inbound_ids}
-        logger.info("XUI add_client: email=%s inbounds=%s", payload.email, payload.inbound_ids)
+        logger.info(
+            "XUI add_client: email=%s uuid=%s inbounds=%s",
+            payload.email, payload.uuid, payload.inbound_ids,
+        )
         data = await self._request("POST", "/panel/api/clients/add", json=body)
-        # obj is often null on success — subscription data is built locally from subId
         logger.info(
             "Client created: %s on inbounds %s (msg=%s)",
             payload.email,
@@ -365,10 +378,12 @@ class XUIApiService:
             json=body,
         )
 
-    async def patch_client_flow_in_inbound(self, inbound_id: int, email: str) -> None:
+    async def patch_client_on_inbound(
+        self, inbound_id: int, email: str, vless_uuid: str
+    ) -> None:
         """
-        Set client flow on one inbound: xtls-rprx-vision for Reality, empty for WS/none.
-        WS inbounds break if flow is set; Reality inbounds timeout without flow.
+        Ensure inbound settings.clients[] has the canonical VLESS uuid + correct flow.
+        Inbound client objects use ``id`` for the VLESS UUID string.
         """
         obj = await self.get_inbound(inbound_id)
         stream = _parse_json_field(obj.get("streamSettings"))
@@ -386,36 +401,53 @@ class XUIApiService:
 
         touched = False
         for client in clients:
-            if client.get("email") == email:
-                if client.get("flow") != flow:
-                    client["flow"] = flow
-                    touched = True
-                break
-
-        if not touched:
+            if client.get("email") != email:
+                continue
+            if client.get("id") != vless_uuid:
+                client["id"] = vless_uuid
+                touched = True
+            if client.get("flow", "") != flow:
+                client["flow"] = flow
+                touched = True
+            break
+        else:
             logger.debug(
-                "Client %s not in inbound %s settings.clients — skip flow patch",
+                "Client %s not in inbound %s settings.clients — skip patch",
                 email, inbound_id,
             )
+            return
+
+        if not touched:
             return
 
         payload = _inbound_update_payload(obj, settings, stream)
         await self.update_inbound(inbound_id, payload)
         logger.info(
-            "Patched flow=%r for %s on inbound %s (security=%s)",
-            flow, email, inbound_id, security,
+            "Patched inbound %s client %s uuid=%s flow=%r",
+            inbound_id, email, vless_uuid, flow,
         )
 
-    async def apply_client_flows(self, email: str, inbound_ids: list[int]) -> None:
-        """Apply per-inbound flow after clients/add (Reality vs WS)."""
+    async def finalize_client_on_inbounds(
+        self, email: str, vless_uuid: str, inbound_ids: list[int]
+    ) -> None:
+        """Sync VLESS uuid + per-inbound flow on every attached inbound."""
         for ib_id in inbound_ids:
             try:
-                await self.patch_client_flow_in_inbound(ib_id, email)
+                await self.patch_client_on_inbound(ib_id, email, vless_uuid)
             except XUIError as exc:
                 logger.warning(
-                    "Flow patch failed for %s inbound %s: %s",
+                    "Inbound patch failed for %s inbound %s: %s",
                     email, ib_id, exc,
                 )
+
+    async def apply_client_flows(self, email: str, inbound_ids: list[int]) -> None:
+        """Sync panel uuid + per-inbound flow on every attached inbound."""
+        record = await self.get_client(email)
+        vless_uuid = record.get("uuid") or ""
+        if not vless_uuid:
+            logger.warning("No panel uuid for %s after create — inbound links may fail", email)
+            return
+        await self.finalize_client_on_inbounds(email, vless_uuid, inbound_ids)
 
     async def bulk_attach(self, emails: list[str], inbound_ids: list[int]) -> None:
         """POST /panel/api/clients/bulkAttach"""

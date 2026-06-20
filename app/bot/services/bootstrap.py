@@ -77,6 +77,9 @@ def get_vpn_service(config: Config) -> VPNService | None:
             start_after_first_use=config.xui.START_AFTER_FIRST_USE,
             default_duration_days=config.xui.DEFAULT_DURATION_DAYS,
             refresh_inbound_ids=lambda: refresh_inbound_ids(config),
+            node_sync_enabled=config.xui.NODE_SYNC_ENABLED,
+            node_ssh_user=config.xui.NODE_SSH_USER,
+            node_ssh_port=config.xui.NODE_SSH_PORT,
         )
     return None
 

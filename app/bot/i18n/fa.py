@@ -118,11 +118,15 @@ BUY_VIP_BTN = "🌍 سرویس VIP چند لوکیشن"
 
 # ─── Buy: plans table ────────────────────────────────────────────────────────
 
-VIP_PLANS_TABLE_HEADER = "🌍 <b>سرویس VIP چند لوکیشن</b>\n<i>همه لوکیشن‌ها (🇩🇪 CDN + نودهای مستقیم) در یک اشتراک</i>\n"
-VIP_PLANS_TABLE_SEP = "━━━━━━━━━━━━━━━━━━━━━"
-VIP_PLANS_TABLE_ROW = "{emoji}{gb} گیگابایت | {days} روز | {price} تومان | هر گیگ: {per_gb} تومان{badge}"
+VIP_PLANS_TABLE_HEADER = (
+    "🌍 <b>سرویس VIP چند لوکیشن</b>\n\n"
+    "یک اشتراک — همه سرورها فعال می‌شوند:\n"
+    "🇩🇪 آلمان (CDN) · 🇵🇱 لهستان · 🇸🇬 سنگاپور · …"
+)
+VIP_PLANS_TABLE_ROW = "  {emoji}{gb} گیگ · {days} روز · <b>{price}</b> تومان{badge}"
+VIP_PLANS_TABLE_FOOTER = "\n👇 پلن مورد نظر را انتخاب کنید:"
 
-VIP_PLAN_BTN = "{emoji}{gb} گیگ — {price} تومان"
+VIP_PLAN_BTN = "{lead}{gb} گیگ · {price} تومان{badge}"
 
 # ─── Buy: quantity ───────────────────────────────────────────────────────────
 

@@ -15,6 +15,7 @@ from typing import Iterable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.bot.services.node_sync import sync_all_direct_nodes
 from app.bot.services.xui_api import (
     ClientAddPayload,
     XUIApiService,
@@ -60,6 +61,9 @@ class VPNService:
         start_after_first_use: bool = True,
         default_duration_days: int = 30,
         refresh_inbound_ids: Callable[[], Awaitable[list[int]]] | None = None,
+        node_sync_enabled: bool = True,
+        node_ssh_user: str = "root",
+        node_ssh_port: int = 22,
     ) -> None:
         self.xui = xui
         self.inbound_ids = list(inbound_ids)
@@ -67,6 +71,9 @@ class VPNService:
         self.start_after_first_use = start_after_first_use
         self.default_duration_days = default_duration_days
         self._refresh_inbound_ids = refresh_inbound_ids
+        self._node_sync_enabled = node_sync_enabled
+        self._node_ssh_user = node_ssh_user
+        self._node_ssh_port = node_ssh_port
 
     async def _active_inbound_ids(self) -> list[int]:
         """Re-fetch enabled inbounds so new nodes appear without bot restart."""
@@ -122,7 +129,22 @@ class VPNService:
 
         try:
             await self.xui.add_client(payload)
-            await self.xui.apply_client_flows(email, payload.inbound_ids)
+            record = await self.xui.get_client(email)
+            vless_uuid = (record.get("uuid") or uuid_str).strip()
+            if vless_uuid != uuid_str:
+                logger.info(
+                    "Panel canonical uuid for %s: %s (bot generated %s)",
+                    email, vless_uuid, uuid_str,
+                )
+            await self.xui.finalize_client_on_inbounds(
+                email, vless_uuid, payload.inbound_ids,
+            )
+            if self._node_sync_enabled:
+                await sync_all_direct_nodes(
+                    self.xui,
+                    ssh_user=self._node_ssh_user,
+                    ssh_port=self._node_ssh_port,
+                )
         except XUIError as e:
             logger.error("Panel create failed for %s: %s", email, e)
             try:
@@ -137,7 +159,7 @@ class VPNService:
             user_id=user_id,
             service_name=service_name,
             panel_email=email,
-            panel_uuid=uuid_str,
+            panel_uuid=vless_uuid,
             subscription_id=sub_id,
             subscription_url=sub_url,
             traffic_limit_bytes=total_bytes,

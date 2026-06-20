@@ -21,6 +21,8 @@ services:
     volumes:
       # Same file the admin panel writes — must stay in sync with panel PLANS_DIR_HOST
       - ../app/data/plans.json:/app/data/plans.json:rw
+      # SSH keys for direct-node xray sync (Germany → PL/SG nodes)
+      - ${NODE_SSH_DIR:-/root/.ssh}:/root/.ssh:ro
     networks:
       nexora_net:
         aliases:
