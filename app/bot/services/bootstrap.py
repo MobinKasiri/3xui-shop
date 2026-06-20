@@ -56,6 +56,18 @@ async def bootstrap_with_retries(config: Config, retries: int = 3) -> bool:
     return False
 
 
+async def refresh_inbound_ids(config: Config) -> list[int]:
+    """Re-query panel for all enabled inbounds (picks up new direct nodes)."""
+    global INBOUND_IDS
+    if xui_service is None:
+        return INBOUND_IDS or []
+    inbound_ids = await xui_service.enabled_inbound_ids(
+        filter_names=config.xui.INBOUND_FILTER,
+    )
+    INBOUND_IDS = inbound_ids
+    return inbound_ids
+
+
 def get_vpn_service(config: Config) -> VPNService | None:
     if INBOUND_IDS and xui_service:
         return VPNService(
@@ -64,6 +76,7 @@ def get_vpn_service(config: Config) -> VPNService | None:
             sub_base_url=config.xui.SUB_BASE_URL,
             start_after_first_use=config.xui.START_AFTER_FIRST_USE,
             default_duration_days=config.xui.DEFAULT_DURATION_DAYS,
+            refresh_inbound_ids=lambda: refresh_inbound_ids(config),
         )
     return None
 

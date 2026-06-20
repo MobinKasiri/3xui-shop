@@ -1,9 +1,8 @@
 {
    "vip": {
-      "name": "سرویس اختصاصی VIP",
-      "emoji": "🔥",
+      "name": "سرویس VIP چند لوکیشن",
+      "emoji": "🌍",
       "plans": [
-         { "id": "vip_5g_30d", "gb": 5, "days": 30, "price": 90000, "per_gb": 18000, "emoji": "" },
          {
             "id": "vip_10g_30d",
             "gb": 10,
@@ -16,24 +15,33 @@
             "id": "vip_30g_30d",
             "gb": 30,
             "days": 30,
-            "price": 450000,
-            "per_gb": 15000,
+            "price": 370000,
+            "per_gb": 12333,
             "emoji": ""
          },
          {
-            "id": "vip_50g_30d",
-            "gb": 50,
+            "id": "vip_60g_30d",
+            "gb": 60,
             "days": 30,
-            "price": 650000,
-            "per_gb": 13000,
-            "emoji": "🥇"
+            "price": 490000,
+            "per_gb": 8167,
+            "emoji": "⭐",
+            "recommended": true
          },
          {
             "id": "vip_100g_30d",
             "gb": 100,
             "days": 30,
-            "price": 1100000,
-            "per_gb": 11000,
+            "price": 680000,
+            "per_gb": 6800,
+            "emoji": "🥇"
+         },
+         {
+            "id": "vip_200g_30d",
+            "gb": 200,
+            "days": 30,
+            "price": 990000,
+            "per_gb": 4950,
             "emoji": "💎"
          }
       ]

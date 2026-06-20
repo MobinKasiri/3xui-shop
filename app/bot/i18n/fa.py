@@ -114,13 +114,13 @@ ERRORS = {
 
 BUY_TYPE_HEADER = "🛒 برای خرید سرویس لطفاً یکی از دسته‌بندی‌های زیر را انتخاب کنید."
 
-BUY_VIP_BTN = "⭐ سرویس اختصاصی VIP"
+BUY_VIP_BTN = "🌍 سرویس VIP چند لوکیشن"
 
 # ─── Buy: plans table ────────────────────────────────────────────────────────
 
-VIP_PLANS_TABLE_HEADER = "⭐ <b>سرویس اختصاصی VIP</b>\n"
+VIP_PLANS_TABLE_HEADER = "🌍 <b>سرویس VIP چند لوکیشن</b>\n<i>همه لوکیشن‌ها (🇩🇪 CDN + نودهای مستقیم) در یک اشتراک</i>\n"
 VIP_PLANS_TABLE_SEP = "━━━━━━━━━━━━━━━━━━━━━"
-VIP_PLANS_TABLE_ROW = "{emoji}{gb} گیگابایت | {days} روز | {price} تومان | هر گیگ: {per_gb} تومان"
+VIP_PLANS_TABLE_ROW = "{emoji}{gb} گیگابایت | {days} روز | {price} تومان | هر گیگ: {per_gb} تومان{badge}"
 
 VIP_PLAN_BTN = "{emoji}{gb} گیگ — {price} تومان"
 
@@ -221,8 +221,9 @@ PURCHASE_SUCCESS_ONE = (
     "🏷 نام سرویس: <b>{name}</b>\n"
     "📦 پلن: {plan_name} — {gb} گیگ | {days} روز\n"
     "📅 وضعیت: {expiry}\n\n"
-    "🔗 <b>لینک اشتراک:</b>\n"
-    "<code>{sub_url}</code>"
+    "🔗 <b>لینک اشتراک (همه لوکیشن‌ها):</b>\n"
+    "<code>{sub_url}</code>\n\n"
+    "ℹ️ لینک را در اپ import کنید — 🇩🇪 CDN و همه نودهای مستقیم با flow صحیح اضافه می‌شوند."
 )
 PURCHASE_SUCCESS_BULK = (
     "🎉 <b>{n} سرویس با موفقیت ایجاد شد!</b>\n\n"
@@ -309,12 +310,11 @@ CONFIG_STATUS_TEXT = (
 )
 
 CONFIG_GET_CONFIGS_TEXT = (
-    "📋 <b>کانفیگ‌های سرویس: {name}</b>\n\n"
-    "🌐 <b>کانفیگ WS:</b>\n"
-    "<code>{ws}</code>\n\n"
-    "🔐 <b>کانفیگ Reality:</b>\n"
-    "<code>{reality}</code>"
+    "📋 <b>کانفیگ‌های سرویس: {name}</b>\n"
+    "<i>همه لوکیشن‌ها — پس از import اشتراک، همه را خواهید داشت</i>\n\n"
+    "{links}"
 )
+CONFIG_GET_CONFIGS_EMPTY = "❌ کانفیگی از پنل دریافت نشد. از لینک اشتراک استفاده کنید."
 CONFIG_GET_SUB_TEXT = (
     "🔑 <b>لینک اشتراک سرویس: {name}</b>\n\n"
     "<code>{url}</code>\n\n"

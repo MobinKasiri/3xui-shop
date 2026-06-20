@@ -7,6 +7,7 @@ attached to one or more panel inbounds.
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
 import secrets
 from dataclasses import dataclass
 from datetime import datetime
@@ -58,12 +59,22 @@ class VPNService:
         *,
         start_after_first_use: bool = True,
         default_duration_days: int = 30,
+        refresh_inbound_ids: Callable[[], Awaitable[list[int]]] | None = None,
     ) -> None:
         self.xui = xui
         self.inbound_ids = list(inbound_ids)
         self.sub_base_url = sub_base_url.rstrip("/") + "/"
         self.start_after_first_use = start_after_first_use
         self.default_duration_days = default_duration_days
+        self._refresh_inbound_ids = refresh_inbound_ids
+
+    async def _active_inbound_ids(self) -> list[int]:
+        """Re-fetch enabled inbounds so new nodes appear without bot restart."""
+        if self._refresh_inbound_ids:
+            ids = await self._refresh_inbound_ids()
+            if ids:
+                self.inbound_ids = ids
+        return self.inbound_ids
 
     def sub_url(self, sub_id: str) -> str:
         return self.sub_base_url + sub_id
@@ -105,12 +116,13 @@ class VPNService:
             total_bytes=total_bytes,
             expiry_ms=expiry_ms,
             flow="",
-            inbound_ids=self.inbound_ids,
+            inbound_ids=await self._active_inbound_ids(),
             tg_id=tg_id,
         )
 
         try:
             await self.xui.add_client(payload)
+            await self.xui.apply_client_flows(email, payload.inbound_ids)
         except XUIError as e:
             logger.error("Panel create failed for %s: %s", email, e)
             try:
@@ -136,7 +148,10 @@ class VPNService:
             plan_gb=plan_gb,
             plan_days=plan_days,
         )
-        logger.info("Created config user=%s name=%s sub=%s", user_id, service_name, sub_url)
+        logger.info(
+            "Created config user=%s name=%s sub=%s inbounds=%s",
+            user_id, service_name, sub_url, payload.inbound_ids,
+        )
         return VPNConfigResult(config=config, subscription_url=sub_url)
 
     # ── bulk-create ──────────────────────────────────────────────────────────
@@ -220,26 +235,34 @@ class VPNService:
             setattr(config, k, v)
         return config
 
+    async def fetch_all_links(self, config: VPNConfig) -> list[str]:
+        """All VLESS links from subscription (every enabled inbound)."""
+        try:
+            links = await self.xui.get_sub_links(config.subscription_id)
+            if links:
+                return links
+        except XUIError:
+            pass
+        try:
+            return await self.xui.get_client_links(config.panel_email)
+        except XUIError:
+            return []
+
     async def fetch_links(self, config: VPNConfig) -> tuple[str, str]:
         """
-        Return (ws_link, reality_link) by asking the panel for the per-client links.
-        Heuristic: links containing 'reality' (in security or fp) → reality, else WS.
-        Returns empty strings when not available.
+        Return (ws_link, reality_link) for legacy UI.
+        When multiple Reality nodes exist, the first WS and first Reality link are returned.
         """
-        try:
-            links = await self.xui.get_client_links(config.panel_email)
-        except XUIError:
-            return "", ""
-
+        links = await self.fetch_all_links(config)
         ws_link = ""
         reality_link = ""
         for link in links:
             low = link.lower()
             if "reality" in low or "pbk=" in low or "fp=" in low:
-                reality_link = link
-            else:
+                if not reality_link:
+                    reality_link = link
+            elif not ws_link:
                 ws_link = link
-        # Fallback: assign by order if heuristic missed
         if not (ws_link or reality_link) and links:
             ws_link = links[0] if links else ""
             reality_link = links[1] if len(links) > 1 else ""

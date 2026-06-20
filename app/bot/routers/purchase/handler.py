@@ -140,6 +140,7 @@ def _render_plans_text(plans: list[dict]) -> str:
     for i, plan in enumerate(plans):
         emoji = plan.get("emoji", "")
         prefix = emoji + " " if emoji else ""
+        badge = " — پیشنهادی" if plan.get("recommended") else ""
         rows.append(
             fa.VIP_PLANS_TABLE_ROW.format(
                 emoji=prefix,
@@ -147,6 +148,7 @@ def _render_plans_text(plans: list[dict]) -> str:
                 days=to_persian_digits(plan["days"]),
                 price=format_toman(plan["price"]),
                 per_gb=format_toman(plan.get("per_gb", plan["price"] // plan["gb"])),
+                badge=badge,
             )
         )
         if i < len(plans) - 1:

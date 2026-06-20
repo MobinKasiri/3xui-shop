@@ -236,15 +236,22 @@ async def cb_links(
         await callback.answer(fa.ERRORS["api_error"], show_alert=True)
         return
     try:
-        ws_link, reality_link = await vpn.fetch_links(cfg)
+        all_links = await vpn.fetch_all_links(cfg)
     except XUIError:
         await callback.answer(fa.ERRORS["api_error"], show_alert=True)
         return
 
+    if all_links:
+        lines = []
+        for i, link in enumerate(all_links, 1):
+            lines.append(f"{to_persian_digits(i)}. <code>{link}</code>")
+        links_block = "\n\n".join(lines)
+    else:
+        links_block = fa.CONFIG_GET_CONFIGS_EMPTY
+
     text = fa.CONFIG_GET_CONFIGS_TEXT.format(
         name=cfg.service_name,
-        ws=ws_link or "—",
-        reality=reality_link or "—",
+        links=links_block,
     )
     builder = InlineKeyboardBuilder()
     builder.button(text=fa.BACK, callback_data=f"cfg:open:{cid}")

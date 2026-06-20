@@ -24,6 +24,37 @@ from app.config import XUIConfig
 
 logger = logging.getLogger(__name__)
 
+REALITY_FLOW = "xtls-rprx-vision"
+_INBOUND_UPDATE_SKIP = frozenset({
+    "id", "up", "down", "clientStats", "tag", "subSortIndex",
+    "lastTrafficResetTime", "trafficReset",
+})
+
+
+def _parse_json_field(val: Any) -> dict | list | Any:
+    if isinstance(val, str):
+        if not val.strip():
+            return {}
+        try:
+            return json.loads(val)
+        except json.JSONDecodeError:
+            return {}
+    return val if val is not None else {}
+
+
+def _inbound_security(stream_settings: Any) -> str:
+    stream = _parse_json_field(stream_settings)
+    if isinstance(stream, dict):
+        return str(stream.get("security") or "")
+    return ""
+
+
+def _inbound_update_payload(obj: dict, settings: dict, stream_settings: dict) -> dict:
+    payload = {k: v for k, v in obj.items() if k not in _INBOUND_UPDATE_SKIP}
+    payload["settings"] = settings
+    payload["streamSettings"] = stream_settings
+    return payload
+
 
 # ─── Custom exceptions ────────────────────────────────────────────────────────
 
@@ -57,6 +88,7 @@ class InboundInfo:
     protocol: str
     port: int
     enable: bool
+    security: str = ""  # "reality", "tls", "none", ...
 
 
 @dataclass
@@ -254,6 +286,7 @@ class XUIApiService:
                 protocol=item.get("protocol", ""),
                 port=item.get("port", 0),
                 enable=item.get("enable", True),
+                security=_inbound_security(item.get("streamSettings")),
             ))
         return result
 
@@ -323,6 +356,66 @@ class XUIApiService:
             data.get("msg", ""),
         )
         return data
+
+    async def update_inbound(self, inbound_id: int, body: dict) -> None:
+        """POST /panel/api/inbounds/update/{id}"""
+        await self._request(
+            "POST",
+            f"/panel/api/inbounds/update/{inbound_id}",
+            json=body,
+        )
+
+    async def patch_client_flow_in_inbound(self, inbound_id: int, email: str) -> None:
+        """
+        Set client flow on one inbound: xtls-rprx-vision for Reality, empty for WS/none.
+        WS inbounds break if flow is set; Reality inbounds timeout without flow.
+        """
+        obj = await self.get_inbound(inbound_id)
+        stream = _parse_json_field(obj.get("streamSettings"))
+        if not isinstance(stream, dict):
+            stream = {}
+        security = stream.get("security", "")
+        flow = REALITY_FLOW if security == "reality" else ""
+
+        settings = _parse_json_field(obj.get("settings"))
+        if not isinstance(settings, dict):
+            settings = {}
+        clients = settings.get("clients") or []
+        if not isinstance(clients, list):
+            clients = []
+
+        touched = False
+        for client in clients:
+            if client.get("email") == email:
+                if client.get("flow") != flow:
+                    client["flow"] = flow
+                    touched = True
+                break
+
+        if not touched:
+            logger.debug(
+                "Client %s not in inbound %s settings.clients — skip flow patch",
+                email, inbound_id,
+            )
+            return
+
+        payload = _inbound_update_payload(obj, settings, stream)
+        await self.update_inbound(inbound_id, payload)
+        logger.info(
+            "Patched flow=%r for %s on inbound %s (security=%s)",
+            flow, email, inbound_id, security,
+        )
+
+    async def apply_client_flows(self, email: str, inbound_ids: list[int]) -> None:
+        """Apply per-inbound flow after clients/add (Reality vs WS)."""
+        for ib_id in inbound_ids:
+            try:
+                await self.patch_client_flow_in_inbound(ib_id, email)
+            except XUIError as exc:
+                logger.warning(
+                    "Flow patch failed for %s inbound %s: %s",
+                    email, ib_id, exc,
+                )
 
     async def bulk_attach(self, emails: list[str], inbound_ids: list[int]) -> None:
         """POST /panel/api/clients/bulkAttach"""
