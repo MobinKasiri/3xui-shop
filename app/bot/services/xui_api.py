@@ -56,6 +56,33 @@ def _inbound_update_payload(obj: dict, settings: dict, stream_settings: dict) ->
     return payload
 
 
+def extract_vless_uuid(record: dict) -> str:
+    """VLESS UUID from a client record (handles v3.3 nested shapes)."""
+    if not isinstance(record, dict):
+        return ""
+    for key in ("uuid", "UUID"):
+        val = record.get(key)
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+    # Some endpoints expose the VLESS secret as string id (not numeric row id).
+    val = record.get("id")
+    if isinstance(val, str) and "-" in val:
+        return val.strip()
+    return ""
+
+
+def _unwrap_client_obj(obj: Any) -> dict:
+    """3X-UI v3.3 GET /clients/get returns {client, inboundIds}, not a flat client."""
+    if not isinstance(obj, dict):
+        return {}
+    if isinstance(obj.get("client"), dict):
+        merged = dict(obj["client"])
+        if "inboundIds" in obj:
+            merged["inboundIds"] = obj["inboundIds"]
+        return merged
+    return obj
+
+
 # ─── Custom exceptions ────────────────────────────────────────────────────────
 
 class XUIError(Exception):
@@ -329,8 +356,25 @@ class XUIApiService:
         data = await self._request(
             "GET", f"/panel/api/clients/get/{self._email_path(email)}"
         )
-        obj = data.get("obj") or {}
-        return obj if isinstance(obj, dict) else {}
+        return _unwrap_client_obj(data.get("obj"))
+
+    async def resolve_client_uuid(self, email: str, *, hint: str = "") -> str:
+        """Fetch VLESS uuid after create — tries get, list, then hint."""
+        record = await self.get_client(email)
+        uuid_val = extract_vless_uuid(record)
+        if uuid_val:
+            return uuid_val
+
+        data = await self._request("GET", "/panel/api/clients/list")
+        for item in data.get("obj") or []:
+            if isinstance(item, dict) and item.get("email") == email:
+                uuid_val = extract_vless_uuid(item)
+                if uuid_val:
+                    return uuid_val
+
+        if hint:
+            return hint.strip()
+        return ""
 
     async def add_client(self, payload: ClientAddPayload) -> dict:
         """
@@ -419,7 +463,9 @@ class XUIApiService:
                 record = await self.get_client(email)
             except XUIError:
                 record = {}
-            vless_id = (record.get("uuid") or c.get("id") or c.get("uuid") or "").strip()
+            vless_id = extract_vless_uuid(record) or (
+                (c.get("id") if isinstance(c.get("id"), str) else "") or c.get("uuid") or ""
+            ).strip()
             if not vless_id:
                 logger.warning("Skipping %s on inbound %s — no VLESS uuid", email, inbound_id)
                 continue

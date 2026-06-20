@@ -36,6 +36,11 @@ GB = 1024 ** 3
 MB = 1024 ** 2
 
 
+def _make_uuid() -> str:
+    import uuid
+    return str(uuid.uuid4())
+
+
 def _make_sub_id() -> str:
     return secrets.token_hex(12)
 
@@ -101,6 +106,7 @@ class VPNService:
         Raises XUIError on panel failure (and rolls back any partial panel state).
         """
         email = panel_email(service_name)
+        vless_uuid_hint = _make_uuid()
         sub_id = _make_sub_id()
 
         total_bytes = plan_gb * GB
@@ -114,7 +120,7 @@ class VPNService:
 
         payload = ClientAddPayload(
             email=email,
-            uuid="",
+            uuid=vless_uuid_hint,
             sub_id=sub_id,
             total_bytes=total_bytes,
             expiry_ms=expiry_ms,
@@ -125,8 +131,9 @@ class VPNService:
 
         try:
             await self.xui.add_client(payload)
-            record = await self.xui.get_client(email)
-            vless_uuid = (record.get("uuid") or "").strip()
+            vless_uuid = await self.xui.resolve_client_uuid(
+                email, hint=vless_uuid_hint,
+            )
             if not vless_uuid:
                 raise XUIError(f"Panel did not return uuid for {email}")
             logger.info("Panel uuid for %s: %s", email, vless_uuid)
