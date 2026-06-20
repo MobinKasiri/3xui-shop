@@ -1,7 +1,7 @@
 """
 VPN config service — creates, deletes, toggles configs via 3X-UI.
 
-Each VPN config maps to a single panel client (email = service_name@nexora.vpn)
+Each VPN config maps to a single panel client (email = service name, e.g. ``ali``).
 attached to one or more panel inbounds.
 """
 from __future__ import annotations
@@ -36,11 +36,6 @@ GB = 1024 ** 3
 MB = 1024 ** 2
 
 
-def _make_uuid() -> str:
-    import uuid
-    return str(uuid.uuid4())
-
-
 def _make_sub_id() -> str:
     return secrets.token_hex(12)
 
@@ -64,6 +59,7 @@ class VPNService:
         node_sync_enabled: bool = True,
         node_ssh_user: str = "root",
         node_ssh_port: int = 22,
+        node_ssh_identity: str = "",
     ) -> None:
         self.xui = xui
         self.inbound_ids = list(inbound_ids)
@@ -74,6 +70,7 @@ class VPNService:
         self._node_sync_enabled = node_sync_enabled
         self._node_ssh_user = node_ssh_user
         self._node_ssh_port = node_ssh_port
+        self._node_ssh_identity = node_ssh_identity
 
     async def _active_inbound_ids(self) -> list[int]:
         """Re-fetch enabled inbounds so new nodes appear without bot restart."""
@@ -104,7 +101,6 @@ class VPNService:
         Raises XUIError on panel failure (and rolls back any partial panel state).
         """
         email = panel_email(service_name)
-        uuid_str = _make_uuid()
         sub_id = _make_sub_id()
 
         total_bytes = plan_gb * GB
@@ -118,7 +114,7 @@ class VPNService:
 
         payload = ClientAddPayload(
             email=email,
-            uuid=uuid_str,
+            uuid="",
             sub_id=sub_id,
             total_bytes=total_bytes,
             expiry_ms=expiry_ms,
@@ -130,13 +126,11 @@ class VPNService:
         try:
             await self.xui.add_client(payload)
             record = await self.xui.get_client(email)
-            vless_uuid = (record.get("uuid") or uuid_str).strip()
-            if vless_uuid != uuid_str:
-                logger.info(
-                    "Panel canonical uuid for %s: %s (bot generated %s)",
-                    email, vless_uuid, uuid_str,
-                )
-            await self.xui.finalize_client_on_inbounds(
+            vless_uuid = (record.get("uuid") or "").strip()
+            if not vless_uuid:
+                raise XUIError(f"Panel did not return uuid for {email}")
+            logger.info("Panel uuid for %s: %s", email, vless_uuid)
+            await self.xui.ensure_client_on_inbounds(
                 email, vless_uuid, payload.inbound_ids,
             )
             if self._node_sync_enabled:
@@ -144,6 +138,7 @@ class VPNService:
                     self.xui,
                     ssh_user=self._node_ssh_user,
                     ssh_port=self._node_ssh_port,
+                    ssh_identity=self._node_ssh_identity,
                 )
         except XUIError as e:
             logger.error("Panel create failed for %s: %s", email, e)

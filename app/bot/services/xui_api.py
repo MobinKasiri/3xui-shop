@@ -353,6 +353,7 @@ class XUIApiService:
         }
         if payload.uuid:
             client["uuid"] = payload.uuid
+        # Do NOT set client["id"] — that is the numeric DB row id in 3X-UI v3.3+
         if payload.flow:
             client["flow"] = payload.flow
 
@@ -369,6 +370,76 @@ class XUIApiService:
             data.get("msg", ""),
         )
         return data
+
+    async def ensure_clean_subscription_names(self) -> None:
+        """Use inbound remark only in subscription — no email/traffic/expiry suffix."""
+        try:
+            data = await self._request("POST", "/panel/api/setting/all")
+        except XUIError as exc:
+            logger.warning("Could not read panel settings: %s", exc)
+            return
+        settings = data.get("obj") or {}
+        if not isinstance(settings, dict):
+            return
+        changed = False
+        if settings.get("subShowInfo"):
+            settings["subShowInfo"] = False
+            changed = True
+        if settings.get("subEmailInRemark"):
+            settings["subEmailInRemark"] = False
+            changed = True
+        if changed:
+            try:
+                await self._request("POST", "/panel/api/setting/update", json=settings)
+                logger.info("Panel subscription names: subShowInfo=false, subEmailInRemark=false")
+            except XUIError as exc:
+                logger.warning("Could not update panel subscription settings: %s", exc)
+
+    async def get_inbound_vless_clients(self, inbound_id: int) -> list[dict]:
+        """
+        Xray client entries for a direct node — uuid always from central client record.
+        Inbound settings.clients may omit ``id`` for API-created clients (v3.3+).
+        """
+        obj = await self.get_inbound(inbound_id)
+        stream = _parse_json_field(obj.get("streamSettings"))
+        security = stream.get("security", "") if isinstance(stream, dict) else ""
+        default_flow = REALITY_FLOW if security == "reality" else ""
+
+        settings = _parse_json_field(obj.get("settings"))
+        embedded = settings.get("clients") if isinstance(settings, dict) else []
+        if not isinstance(embedded, list):
+            embedded = []
+
+        out: list[dict] = []
+        for c in embedded:
+            email = (c.get("email") or "").strip()
+            if not email:
+                continue
+            try:
+                record = await self.get_client(email)
+            except XUIError:
+                record = {}
+            vless_id = (record.get("uuid") or c.get("id") or c.get("uuid") or "").strip()
+            if not vless_id:
+                logger.warning("Skipping %s on inbound %s — no VLESS uuid", email, inbound_id)
+                continue
+            flow = c.get("flow") or default_flow
+            entry: dict[str, Any] = {"id": vless_id, "email": email}
+            if flow:
+                entry["flow"] = flow
+            out.append(entry)
+        return out
+
+    async def ensure_client_on_inbounds(
+        self, email: str, vless_uuid: str, inbound_ids: list[int]
+    ) -> None:
+        """Force client into every inbound settings + correct uuid/flow (like panel UI)."""
+        if inbound_ids:
+            try:
+                await self.bulk_attach([email], inbound_ids)
+            except XUIError as exc:
+                logger.warning("bulkAttach for %s (non-fatal): %s", email, exc)
+        await self.finalize_client_on_inbounds(email, vless_uuid, inbound_ids)
 
     async def update_inbound(self, inbound_id: int, body: dict) -> None:
         """POST /panel/api/inbounds/update/{id}"""
@@ -406,16 +477,21 @@ class XUIApiService:
             if client.get("id") != vless_uuid:
                 client["id"] = vless_uuid
                 touched = True
-            if client.get("flow", "") != flow:
-                client["flow"] = flow
+            want_flow = flow
+            if client.get("flow", "") != want_flow:
+                client["flow"] = want_flow
                 touched = True
             break
         else:
-            logger.debug(
-                "Client %s not in inbound %s settings.clients — skip patch",
-                email, inbound_id,
-            )
-            return
+            # Client attached in DB but missing from inbound JSON — inject entry.
+            clients.append({
+                "email": email,
+                "id": vless_uuid,
+                "flow": flow,
+                "enable": True,
+            })
+            settings["clients"] = clients
+            touched = True
 
         if not touched:
             return

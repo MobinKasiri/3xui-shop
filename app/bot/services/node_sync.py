@@ -12,9 +12,8 @@ import json
 import logging
 import socket
 from dataclasses import dataclass
-from typing import Any
 
-from app.bot.services.xui_api import REALITY_FLOW, XUIApiService, XUIError, _parse_json_field
+from app.bot.services.xui_api import XUIApiService, XUIError, _parse_json_field
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +39,7 @@ async def _ssh_push_config(
     *,
     user: str,
     port: int,
+    identity_file: str = "",
 ) -> bool:
     script = f"""set -euo pipefail
 CFG_B64='{cfg_b64}'
@@ -55,9 +55,11 @@ systemctl is-active --quiet xray
         "ssh", "-p", str(port),
         "-o", "StrictHostKeyChecking=no",
         "-o", "ConnectTimeout=20",
-        f"{user}@{host}",
-        "bash", "-s",
+        "-o", "BatchMode=yes",
     ]
+    if identity_file:
+        cmd.extend(["-i", identity_file])
+    cmd.extend([f"{user}@{host}", "bash", "-s"])
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdin=asyncio.subprocess.PIPE,
@@ -73,23 +75,6 @@ systemctl is-active --quiet xray
         )
         return False
     return True
-
-
-def _xray_clients_from_inbound(settings: dict) -> list[dict]:
-    clients_raw = settings.get("clients") or []
-    if not isinstance(clients_raw, list):
-        return []
-    out: list[dict] = []
-    for c in clients_raw:
-        uid = c.get("id") or c.get("uuid")
-        if not uid:
-            continue
-        entry: dict[str, Any] = {"id": uid, "email": c.get("email", "")}
-        flow = c.get("flow") or ""
-        if flow:
-            entry["flow"] = flow
-        out.append(entry)
-    return out
 
 
 def _build_node_xray_config(
@@ -164,12 +149,10 @@ async def sync_direct_node_inbound(
     *,
     ssh_user: str = "root",
     ssh_port: int = 22,
+    ssh_identity: str = "",
 ) -> bool:
     """Push panel inbound clients to the VPS xray config for one direct node."""
     obj = await xui.get_inbound(target.inbound_id)
-    settings = _parse_json_field(obj.get("settings"))
-    if not isinstance(settings, dict):
-        settings = {}
     stream = _parse_json_field(obj.get("streamSettings"))
     if not isinstance(stream, dict):
         stream = {}
@@ -177,9 +160,19 @@ async def sync_direct_node_inbound(
     if not isinstance(reality, dict):
         reality = {}
 
-    clients = _xray_clients_from_inbound(settings)
     if not reality.get("privateKey") or not reality.get("shortIds"):
-        logger.warning("Node sync skip %s — inbound %s missing Reality keys", target.domain, target.inbound_id)
+        logger.warning(
+            "Node sync skip %s — inbound %s missing Reality keys",
+            target.domain, target.inbound_id,
+        )
+        return False
+
+    clients = await xui.get_inbound_vless_clients(target.inbound_id)
+    if not clients:
+        logger.warning(
+            "Node sync skip %s — no VLESS clients with uuid on inbound %s",
+            target.domain, target.inbound_id,
+        )
         return False
 
     cfg = _build_node_xray_config(
@@ -188,13 +181,17 @@ async def sync_direct_node_inbound(
         reality=reality,
     )
     cfg_b64 = base64.b64encode(json.dumps(cfg, separators=(",", ":")).encode()).decode()
-
     host = await _resolve_host(target.domain)
-    ok = await _ssh_push_config(host, cfg_b64, user=ssh_user, port=ssh_port)
+    ok = await _ssh_push_config(
+        host, cfg_b64, user=ssh_user, port=ssh_port, identity_file=ssh_identity,
+    )
     if ok:
         logger.info(
-            "Node sync OK %s (%s) — %d client(s)",
-            target.remark, target.domain, len(clients),
+            "Node sync OK %s (%s) — %d client(s), uuids=%s",
+            target.remark,
+            target.domain,
+            len(clients),
+            [c["id"][:8] + "…" for c in clients],
         )
     return ok
 
@@ -204,6 +201,7 @@ async def sync_all_direct_nodes(
     *,
     ssh_user: str = "root",
     ssh_port: int = 22,
+    ssh_identity: str = "",
 ) -> None:
     """Sync every direct Reality node after panel client changes."""
     try:
@@ -219,7 +217,11 @@ async def sync_all_direct_nodes(
     for target in targets:
         try:
             await sync_direct_node_inbound(
-                xui, target, ssh_user=ssh_user, ssh_port=ssh_port,
+                xui,
+                target,
+                ssh_user=ssh_user,
+                ssh_port=ssh_port,
+                ssh_identity=ssh_identity,
             )
         except Exception:
             logger.exception("Node sync failed for %s", target.domain)

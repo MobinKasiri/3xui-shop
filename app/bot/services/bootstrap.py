@@ -35,6 +35,7 @@ async def bootstrap_inbounds(config: Config) -> bool:
         )
         INBOUND_IDS = inbound_ids
         logger.info("✅ Inbound bootstrap OK — ids=%s", inbound_ids)
+        await xui_service.ensure_clean_subscription_names()
         return True
     except Exception as e:
         logger.warning(
@@ -80,6 +81,7 @@ def get_vpn_service(config: Config) -> VPNService | None:
             node_sync_enabled=config.xui.NODE_SYNC_ENABLED,
             node_ssh_user=config.xui.NODE_SSH_USER,
             node_ssh_port=config.xui.NODE_SSH_PORT,
+            node_ssh_identity=config.xui.NODE_SSH_IDENTITY,
         )
     return None
 

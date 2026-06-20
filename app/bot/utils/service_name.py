@@ -24,8 +24,8 @@ def random_name(prefix: str = "user") -> str:
 
 
 def panel_email(service_name: str) -> str:
-    """Convert a service name to its panel email."""
-    return f"{service_name}@{PANEL_EMAIL_DOMAIN}"
+    """Panel client identifier — plain service name (no @domain suffix)."""
+    return service_name.strip().lower()
 
 
 async def is_taken(session: AsyncSession, service_name: str) -> bool:
