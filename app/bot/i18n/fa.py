@@ -344,7 +344,10 @@ CONFIG_DELETE_CONFIRM = (
 )
 CONFIG_DELETE_YES = "✅ بله، حذف شود"
 CONFIG_DELETE_NO = "❌ خیر، بازگشت"
-CONFIG_DELETED = "🗑 سرویس «{name}» حذف شد."
+CONFIG_DELETED = (
+    "🗑 سرویس «{name}» حذف شد.\n\n"
+    "اگر در v2Box هنوز کانفیگ می‌بینید، اشتراک قدیمی را از اپ حذف کنید."
+)
 
 # ─── Account / Wallet ────────────────────────────────────────────────────────
 

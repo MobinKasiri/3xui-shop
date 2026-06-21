@@ -6,6 +6,7 @@ attached to one or more panel inbounds.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 import secrets
@@ -20,6 +21,7 @@ from app.bot.services.xui_api import (
     ClientAddPayload,
     XUIApiService,
     XUIError,
+    XUINotFound,
 )
 from app.bot.utils.jalali import (
     add_days_ms,
@@ -33,6 +35,9 @@ from app.db.models import VPNConfig
 logger = logging.getLogger(__name__)
 
 GB = 1024 ** 3
+
+# Panel disable → brief wait → delete so CDN + direct nodes drop the UUID cleanly.
+DELETE_DISABLE_DELAY_SEC = 5
 MB = 1024 ** 2
 
 
@@ -227,10 +232,34 @@ class VPNService:
         await VPNConfig.update(session, config.id, is_active=enabled)
 
     async def delete(self, session: AsyncSession, config: VPNConfig) -> None:
+        """
+        Remove a service: disable on panel first (cuts live sessions), then delete.
+        User taps delete once — bot handles both steps.
+        """
+        email = config.panel_email
+        disabled = False
+
         try:
-            await self.xui.delete_client(config.panel_email)
-        except XUIError as e:
-            logger.warning("Panel delete failed for %s: %s", config.panel_email, e)
+            await self.xui.set_client_enabled(email, False)
+            disabled = True
+            logger.info("Disabled panel client before delete: %s", email)
+        except XUINotFound:
+            logger.info("Panel client %s not found for disable (may already be removed)", email)
+        except XUIError:
+            raise
+
+        if disabled:
+            await self._signal_direct_nodes()
+            await asyncio.sleep(DELETE_DISABLE_DELAY_SEC)
+
+        try:
+            await self.xui.delete_client(email)
+            logger.info("Deleted panel client: %s", email)
+        except XUINotFound:
+            logger.info("Panel client %s already deleted", email)
+        except XUIError:
+            raise
+
         await VPNConfig.delete(session, config.id)
         await self._signal_direct_nodes()
 
