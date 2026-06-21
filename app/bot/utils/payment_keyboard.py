@@ -1,7 +1,6 @@
 """Card-to-card payment inline keyboard — copy buttons + cancel."""
 from __future__ import annotations
 
-from aiogram.enums import ButtonStyle
 from aiogram.types import CopyTextButton, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -38,7 +37,7 @@ def card_payment_keyboard(*, toman: int, card: str) -> InlineKeyboardMarkup:
         InlineKeyboardButton(
             text=fa.CANCEL_PLAIN,
             callback_data="cancel_fsm",
-            style=ButtonStyle.DANGER,
+            style="danger",
         ),
     )
     return builder.as_markup()
