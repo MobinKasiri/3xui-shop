@@ -27,7 +27,7 @@ from app.bot.services.notifications import forward_wallet_topup_to_admin
 from app.bot.utils.payment_keyboard import card_payment_keyboard
 from app.bot.utils.receipt_storage import persist_receipt_photo
 from app.bot.utils.jalali import to_jalali
-from app.bot.utils.persian import format_toman, to_persian_digits
+from app.bot.utils.persian import format_toman, normalize_digits, to_persian_digits
 from app.db.models import Transaction, User
 from app.db.models.transaction import (
     PAY_CARD,
@@ -123,7 +123,7 @@ async def cb_custom_amount(callback: CallbackQuery, state: FSMContext, **kwargs)
 async def msg_custom_amount(
     message: Message, state: FSMContext, user: User, **kwargs
 ) -> None:
-    raw = (message.text or "").strip().translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789"))
+    raw = normalize_digits((message.text or "").strip())
     raw = raw.replace(",", "").replace("٬", "").replace(" ", "")
     if not raw.isdigit():
         await message.answer(fa.ERRORS["amount_invalid"])

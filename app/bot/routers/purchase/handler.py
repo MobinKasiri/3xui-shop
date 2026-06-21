@@ -29,7 +29,7 @@ from app.bot.services.wallet import deduct
 from app.bot.utils.discount import record_usage, validate_and_apply
 from app.bot.utils.payment_keyboard import card_payment_keyboard
 from app.bot.utils.receipt_storage import persist_receipt_photo, receipt_file_id
-from app.bot.utils.persian import format_toman, to_persian_digits
+from app.bot.utils.persian import format_toman, normalize_digits, to_persian_digits
 from app.bot.utils.service_name import (
     is_taken,
     numbered_name,
@@ -274,7 +274,7 @@ async def msg_quantity(message: Message, state: FSMContext, **kwargs) -> None:
         return
     text = (message.text or "").strip()
     # convert persian digits to arabic
-    text = text.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789"))
+    text = normalize_digits(text)
     if not text.isdigit():
         await message.answer(
             fa.ERRORS["quantity_invalid"].format(
@@ -386,7 +386,7 @@ async def msg_service_name(
     message: Message, state: FSMContext, session: AsyncSession, **kwargs
 ) -> None:
     raw = (message.text or "").strip().lower()
-    raw = raw.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789"))
+    raw = normalize_digits(raw)
     if not validate_service_name(raw):
         await message.answer(fa.ERRORS["service_name_invalid"], reply_markup=_service_name_keyboard())
         return

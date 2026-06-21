@@ -9,7 +9,7 @@ from app.bot.utils.persian import to_persian_digits
 
 
 def to_jalali(dt: datetime) -> str:
-    """Convert datetime to Jalali date string like ۱۴۰۳/۰۵/۲۸."""
+    """Convert datetime to Jalali date string like 1403/05/28."""
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     jd = jdatetime.datetime.fromgregorian(datetime=dt)
