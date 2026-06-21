@@ -47,6 +47,8 @@ class XUIConfig:
     PASSWORD: str
     TOKEN: str | None
     SUB_BASE_URL: str
+    SUB_ORIGIN_URL: str = ""
+    SUB_PROXY_ENABLED: bool = False
     INBOUND_FILTER: tuple[str, ...] = ()
     START_AFTER_FIRST_USE: bool = True
     DEFAULT_DURATION_DAYS: int = 30
@@ -261,6 +263,8 @@ def load_config() -> Config:
             PASSWORD=env.str("XUI_PASSWORD"),
             TOKEN=xui_token,
             SUB_BASE_URL=env.str("XUI_SUB_BASE_URL", default="https://s.nexoranode.xyz:2096/s/"),
+            SUB_ORIGIN_URL=env.str("XUI_SUB_ORIGIN_URL", default=""),
+            SUB_PROXY_ENABLED=env.bool("XUI_SUB_PROXY_ENABLED", default=False),
             INBOUND_FILTER=_parse_inbound_filter(env),
             START_AFTER_FIRST_USE=env.bool("XUI_START_AFTER_FIRST_USE", default=True),
             DEFAULT_DURATION_DAYS=_int_env(env, "XUI_DEFAULT_DURATION_DAYS", default=30),

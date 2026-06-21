@@ -120,6 +120,33 @@ class VPNConfig(Base):
         return list(result.scalars().all())
 
     @classmethod
+    async def get_by_subscription_id(cls, session: AsyncSession, sub_id: str) -> Self | None:
+        result = await session.execute(
+            select(cls).where(cls.subscription_id == sub_id).limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    @classmethod
+    async def rewrite_subscription_urls(cls, session: AsyncSession, base_url: str) -> int:
+        """Point all stored subscription URLs at the new base (e.g. bot proxy)."""
+        prefix = base_url.rstrip("/") + "/"
+        configs = await cls.get_all(session)
+        updated = 0
+        for cfg in configs:
+            new_url = prefix + cfg.subscription_id
+            if cfg.subscription_url != new_url:
+                cfg.subscription_url = new_url
+                updated += 1
+        if updated:
+            await session.commit()
+        return updated
+
+    @classmethod
+    async def get_all(cls, session: AsyncSession) -> list[Self]:
+        result = await session.execute(select(cls))
+        return list(result.scalars().all())
+
+    @classmethod
     async def create(cls, session: AsyncSession, **kwargs: Any) -> Self:
         config = cls(**kwargs)
         session.add(config)

@@ -160,9 +160,7 @@ class ClientAddPayload:
     limit_ip: int = 0
     enable: bool = True
     tg_id: int = 0
-
-
-# ─── XUI API Client ──────────────────────────────────────────────────────────
+    comment: str = ""
 
 class XUIApiService:
     def __init__(self, config: XUIConfig) -> None:
@@ -392,7 +390,7 @@ class XUIApiService:
             "tgId": payload.tg_id,
             "limitIp": payload.limit_ip,
             "enable": payload.enable,
-            "comment": "",
+            "comment": payload.comment or "",
             "reset": 0,
         }
         if payload.uuid:
@@ -431,6 +429,13 @@ class XUIApiService:
             changed = True
         if settings.get("subEmailInRemark"):
             settings["subEmailInRemark"] = False
+            changed = True
+        if settings.get("remarkModel") != "-i":
+            settings["remarkModel"] = "-i"
+            changed = True
+        # Per-user titles come from bot subscription proxy (Profile-Title header).
+        if settings.get("subTitle"):
+            settings["subTitle"] = ""
             changed = True
         if changed:
             try:
@@ -591,6 +596,7 @@ class XUIApiService:
         enable: bool = True,
         tg_id: int = 0,
         sub_id: str | None = None,
+        comment: str | None = None,
     ) -> None:
         """
         POST /panel/api/clients/update/{email}
@@ -605,6 +611,8 @@ class XUIApiService:
             "enable": enable,
             "tgId": tg_id,
         }
+        if comment is not None:
+            body["comment"] = comment
         if sub_id is not None:
             body["subId"] = sub_id
         await self._request(

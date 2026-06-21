@@ -53,6 +53,23 @@ async def bootstrap_inbounds(config: Config) -> bool:
         return False
 
 
+async def setup_subscription_proxy(config: Config, session_factory) -> None:
+    """Rewrite stored sub URLs to bot proxy base when enabled."""
+    if not config.xui.SUB_PROXY_ENABLED:
+        return
+    if not config.xui.SUB_ORIGIN_URL.strip():
+        logger.warning("XUI_SUB_PROXY_ENABLED but XUI_SUB_ORIGIN_URL is empty — proxy disabled")
+        return
+    from app.db.models import VPNConfig
+
+    async with session_factory() as session:
+        count = await VPNConfig.rewrite_subscription_urls(session, config.xui.SUB_BASE_URL)
+    if count:
+        logger.info("Subscription proxy: rewrote %d subscription URL(s) to %s", count, config.xui.SUB_BASE_URL)
+    else:
+        logger.info("Subscription proxy active — base URL %s", config.xui.SUB_BASE_URL)
+
+
 async def bootstrap_with_retries(config: Config, retries: int = 3) -> bool:
     for attempt in range(1, retries + 1):
         if await bootstrap_inbounds(config):

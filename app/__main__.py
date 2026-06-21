@@ -17,6 +17,7 @@ from app.bot.services.bootstrap import (
     bootstrap_with_retries,
     close_xui,
     get_vpn_service,
+    setup_subscription_proxy,
     xui_service,
 )
 from app.bot.filters.is_private import IsPrivate
@@ -58,6 +59,9 @@ async def on_startup(bot: Bot, config: Config, db: Database, **kwargs) -> None:
         logger.debug("Could not fetch bot username at startup.")
 
     await bootstrap_with_retries(config)
+
+    if config.xui.SUB_PROXY_ENABLED:
+        await setup_subscription_proxy(config, db.session)
 
     if config.bot.CHANNEL_GATE_ENABLED and config.bot.gate_channels:
         logger.info(
@@ -220,8 +224,20 @@ async def main() -> None:
             ver = await read_node_sync_version(config)
             return web.Response(text=str(ver), content_type="text/plain")
 
+        async def subscription_proxy_handler(request: web.Request) -> web.Response:
+            from app.bot.services.subscription_proxy import handle_subscription_proxy
+
+            if not config.xui.SUB_PROXY_ENABLED:
+                return web.Response(status=404, text="not found")
+            return await handle_subscription_proxy(
+                request,
+                session_factory=db.session,
+                config=config,
+            )
+
         app.router.add_get("/health", health_handler)
         app.router.add_get("/internal/node-sync/v", node_sync_version_handler)
+        app.router.add_get("/sub/{sub_id}", subscription_proxy_handler)
 
         webhook_requests_handler = SimpleRequestHandler(
             dispatcher=dispatcher,
