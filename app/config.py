@@ -28,7 +28,15 @@ class BotConfig:
     DOMAIN: str
     PORT: int
     USE_POLLING: bool
+    CHANNEL_GATE_ENABLED: bool = False
     REQUIRED_CHANNELS: tuple[RequiredChannel, ...] = ()
+
+    @property
+    def gate_channels(self) -> tuple[RequiredChannel, ...]:
+        """Channels enforced on /start when CHANNEL_GATE_ENABLED=true."""
+        if not self.CHANNEL_GATE_ENABLED:
+            return ()
+        return self.REQUIRED_CHANNELS
 
 
 @dataclass
@@ -241,6 +249,7 @@ def load_config() -> Config:
             DOMAIN=_bot_public_url(env),
             PORT=bot_port,
             USE_POLLING=env.bool("BOT_USE_POLLING", default=False),
+            CHANNEL_GATE_ENABLED=env.bool("CHANNEL_GATE_ENABLED", default=False),
             REQUIRED_CHANNELS=parse_required_channels(
                 env.str("REQUIRED_CHANNELS", default="")
             ),

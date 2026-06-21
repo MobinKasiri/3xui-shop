@@ -30,7 +30,7 @@ async def cb_channel_joined(
 ) -> None:
     config = kwargs.get("config")
     bot = callback.bot
-    channels = config.bot.REQUIRED_CHANNELS if config else ()
+    channels = config.bot.gate_channels if config else ()
 
     audits = await audit_channels(bot, user.tg_id, channels)
     missing = missing_joined_channels(audits)

@@ -59,11 +59,11 @@ async def on_startup(bot: Bot, config: Config, db: Database, **kwargs) -> None:
 
     await bootstrap_with_retries(config)
 
-    if config.bot.REQUIRED_CHANNELS:
+    if config.bot.CHANNEL_GATE_ENABLED and config.bot.gate_channels:
         logger.info(
             "Required channels (%s): %s",
-            len(config.bot.REQUIRED_CHANNELS),
-            ", ".join(ch.chat_id for ch in config.bot.REQUIRED_CHANNELS),
+            len(config.bot.gate_channels),
+            ", ".join(ch.chat_id for ch in config.bot.gate_channels),
         )
     else:
         logger.info("Required channels: disabled")

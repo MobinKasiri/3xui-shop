@@ -42,7 +42,7 @@ class ChannelGateMiddleware(BaseMiddleware):
 
         if (
             not config
-            or not config.bot.REQUIRED_CHANNELS
+            or not config.bot.gate_channels
             or user is None
             or bot is None
             or inner is None
@@ -58,7 +58,7 @@ class ChannelGateMiddleware(BaseMiddleware):
         block, missing = await should_block_for_channels(
             bot,
             user.tg_id,
-            config.bot.REQUIRED_CHANNELS,
+            config.bot.gate_channels,
             gate_acknowledged=user.channel_gate_passed,
         )
 
@@ -69,7 +69,7 @@ class ChannelGateMiddleware(BaseMiddleware):
             await User.update(session, user.tg_id, channel_gate_passed=False)
             user.channel_gate_passed = False
 
-        markup = channel_gate_keyboard(config.bot.REQUIRED_CHANNELS)
+        markup = channel_gate_keyboard(config.bot.gate_channels)
         try:
             if isinstance(inner, Message):
                 await inner.answer(fa.CHANNEL_GATE_TEXT, reply_markup=markup)
