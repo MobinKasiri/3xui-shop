@@ -59,8 +59,17 @@ cp /etc/letsencrypt/live/bot.nexoranode.xyz/privkey.pem deploy/nginx/certs/
 cd /opt/nexoranode-bot
 git pull
 cp .env.production .env
-docker compose -f deploy/docker-compose.prod.yml up -d --build
+docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d --build
 docker exec nexoranode-bot poetry run alembic -c /app/db/alembic.ini upgrade head
+```
+
+Or use the wrapper (always loads `/opt/nexoranode-bot/.env`):
+
+```bash
+cd /opt/nexoranode-bot
+chmod +x deploy/compose.sh
+./deploy/compose.sh up -d --build
+./deploy/compose.sh restart bot
 ```
 
 ### 5. Set Telegram Webhook

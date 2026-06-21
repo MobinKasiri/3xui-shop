@@ -54,7 +54,7 @@ systemctl is-active --quiet xray
     cmd = [
         "ssh", "-p", str(port),
         "-o", "StrictHostKeyChecking=no",
-        "-o", "ConnectTimeout=20",
+        "-o", "ConnectTimeout=8",
         "-o", "BatchMode=yes",
     ]
     if identity_file:
@@ -214,7 +214,7 @@ async def sync_all_direct_nodes(
         logger.debug("No direct node inbounds to sync")
         return
 
-    for target in targets:
+    async def _one(target: DirectNodeTarget) -> None:
         try:
             await sync_direct_node_inbound(
                 xui,
@@ -225,3 +225,28 @@ async def sync_all_direct_nodes(
             )
         except Exception:
             logger.exception("Node sync failed for %s", target.domain)
+
+    await asyncio.gather(*(_one(t) for t in targets))
+
+
+def schedule_node_sync(
+    xui: XUIApiService,
+    *,
+    ssh_user: str = "root",
+    ssh_port: int = 22,
+    ssh_identity: str = "",
+) -> None:
+    """Fire-and-forget node sync so purchases are not blocked on SSH latency."""
+
+    async def _run() -> None:
+        try:
+            await sync_all_direct_nodes(
+                xui,
+                ssh_user=ssh_user,
+                ssh_port=ssh_port,
+                ssh_identity=ssh_identity,
+            )
+        except Exception:
+            logger.exception("Background node sync failed")
+
+    asyncio.create_task(_run())

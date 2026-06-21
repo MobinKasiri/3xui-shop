@@ -15,7 +15,7 @@ from typing import Iterable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot.services.node_sync import sync_all_direct_nodes
+from app.bot.services.node_sync import schedule_node_sync
 from app.bot.services.xui_api import (
     ClientAddPayload,
     XUIApiService,
@@ -141,7 +141,7 @@ class VPNService:
                 email, vless_uuid, payload.inbound_ids,
             )
             if self._node_sync_enabled:
-                await sync_all_direct_nodes(
+                schedule_node_sync(
                     self.xui,
                     ssh_user=self._node_ssh_user,
                     ssh_port=self._node_ssh_port,

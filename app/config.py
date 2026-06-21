@@ -42,7 +42,7 @@ class XUIConfig:
     INBOUND_FILTER: tuple[str, ...] = ()
     START_AFTER_FIRST_USE: bool = True
     DEFAULT_DURATION_DAYS: int = 30
-    NODE_SYNC_ENABLED: bool = True
+    NODE_SYNC_ENABLED: bool = False
     NODE_SSH_USER: str = "root"
     NODE_SSH_PORT: int = 22
     NODE_SSH_IDENTITY: str = ""
@@ -254,7 +254,7 @@ def load_config() -> Config:
             INBOUND_FILTER=_parse_inbound_filter(env),
             START_AFTER_FIRST_USE=env.bool("XUI_START_AFTER_FIRST_USE", default=True),
             DEFAULT_DURATION_DAYS=_int_env(env, "XUI_DEFAULT_DURATION_DAYS", default=30),
-            NODE_SYNC_ENABLED=env.bool("NODE_SYNC_ENABLED", default=True),
+            NODE_SYNC_ENABLED=env.bool("NODE_SYNC_ENABLED", default=False),
             NODE_SSH_USER=env.str("NODE_SSH_USER", default="root"),
             NODE_SSH_PORT=_int_env(env, "NODE_SSH_PORT", default=22),
             NODE_SSH_IDENTITY=env.str("NODE_SSH_IDENTITY", default=""),
