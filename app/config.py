@@ -262,7 +262,10 @@ def load_config() -> Config:
             USERNAME=env.str("XUI_USERNAME"),
             PASSWORD=env.str("XUI_PASSWORD"),
             TOKEN=xui_token,
-            SUB_BASE_URL=env.str("XUI_SUB_BASE_URL", default="https://s.nexoranode.xyz:2096/s/"),
+            SUB_BASE_URL=env.str(
+                "XUI_SUB_BASE_URL",
+                default="https://sub.manchesterchocolates.ir/s/",
+            ),
             SUB_ORIGIN_URL=env.str("XUI_SUB_ORIGIN_URL", default=""),
             SUB_PROXY_ENABLED=env.bool("XUI_SUB_PROXY_ENABLED", default=False),
             INBOUND_FILTER=_parse_inbound_filter(env),

@@ -53,21 +53,21 @@ async def bootstrap_inbounds(config: Config) -> bool:
         return False
 
 
-async def setup_subscription_proxy(config: Config, session_factory) -> None:
-    """Rewrite stored sub URLs to bot proxy base when enabled."""
-    if not config.xui.SUB_PROXY_ENABLED:
-        return
-    if not config.xui.SUB_ORIGIN_URL.strip():
-        logger.warning("XUI_SUB_PROXY_ENABLED but XUI_SUB_ORIGIN_URL is empty — proxy disabled")
-        return
+async def sync_subscription_urls(config: Config, session_factory) -> None:
+    """Ensure stored subscription URLs match XUI_SUB_BASE_URL (heals old nexora/bot-proxy rows)."""
     from app.db.models import VPNConfig
 
+    base = config.xui.SUB_BASE_URL.strip()
+    if not base:
+        logger.warning("XUI_SUB_BASE_URL is empty — skipping subscription URL sync")
+        return
+
     async with session_factory() as session:
-        count = await VPNConfig.rewrite_subscription_urls(session, config.xui.SUB_BASE_URL)
+        count = await VPNConfig.rewrite_subscription_urls(session, base)
     if count:
-        logger.info("Subscription proxy: rewrote %d subscription URL(s) to %s", count, config.xui.SUB_BASE_URL)
+        logger.info("Synced %d subscription URL(s) to %s", count, base)
     else:
-        logger.info("Subscription proxy active — base URL %s", config.xui.SUB_BASE_URL)
+        logger.info("Subscription URLs already use %s", base)
 
 
 async def bootstrap_with_retries(config: Config, retries: int = 3) -> bool:

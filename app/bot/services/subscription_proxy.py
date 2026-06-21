@@ -1,16 +1,12 @@
-"""Proxy panel subscription responses with per-user Profile-Title."""
+"""Fetch panel subscription body and inject per-user Profile-Title."""
 from __future__ import annotations
 
 import logging
-import re
 
 import aiohttp
 from aiohttp import web
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.bot.utils.sub_profile import profile_title_from_userinfo, profile_title_header_value
-from app.config import Config
-from app.db.models import VPNConfig
 
 logger = logging.getLogger(__name__)
 
@@ -27,19 +23,11 @@ _PASS_HEADERS = frozenset({
 })
 
 
-async def handle_subscription_proxy(
-    request: web.Request,
+async def proxy_subscription_response(
+    upstream_url: str,
     *,
-    session_factory: async_sessionmaker,
-    config: Config,
+    service_name: str,
 ) -> web.Response:
-    sub_id = request.match_info.get("sub_id", "").strip()
-    if not sub_id or not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", sub_id):
-        return web.Response(status=400, text="invalid subscription id")
-
-    origin_base = config.xui.SUB_ORIGIN_URL.rstrip("/") + "/"
-    upstream_url = origin_base + sub_id
-
     try:
         timeout = aiohttp.ClientTimeout(total=30)
         async with aiohttp.ClientSession(timeout=timeout) as http:
@@ -54,12 +42,6 @@ async def handle_subscription_proxy(
 
     if status >= 400:
         return web.Response(status=status, body=body, headers=passthrough)
-
-    service_name = sub_id
-    async with session_factory() as session:
-        cfg = await VPNConfig.get_by_subscription_id(session, sub_id)
-        if cfg:
-            service_name = cfg.service_name
 
     title = profile_title_from_userinfo(service_name, userinfo)
     headers = dict(passthrough)

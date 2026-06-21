@@ -17,7 +17,7 @@ from app.bot.services.bootstrap import (
     bootstrap_with_retries,
     close_xui,
     get_vpn_service,
-    setup_subscription_proxy,
+    sync_subscription_urls,
     xui_service,
 )
 from app.bot.filters.is_private import IsPrivate
@@ -60,8 +60,7 @@ async def on_startup(bot: Bot, config: Config, db: Database, **kwargs) -> None:
 
     await bootstrap_with_retries(config)
 
-    if config.xui.SUB_PROXY_ENABLED:
-        await setup_subscription_proxy(config, db.session)
+    await sync_subscription_urls(config, db.session)
 
     if config.bot.CHANNEL_GATE_ENABLED and config.bot.gate_channels:
         logger.info(

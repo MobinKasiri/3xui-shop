@@ -128,7 +128,7 @@ class VPNConfig(Base):
 
     @classmethod
     async def rewrite_subscription_urls(cls, session: AsyncSession, base_url: str) -> int:
-        """Point all stored subscription URLs at the new base (e.g. bot proxy)."""
+        """Point all stored subscription URLs at XUI_SUB_BASE_URL + subscription_id."""
         prefix = base_url.rstrip("/") + "/"
         configs = await cls.get_all(session)
         updated = 0
