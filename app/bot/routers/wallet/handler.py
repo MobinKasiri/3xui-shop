@@ -101,13 +101,15 @@ def _amounts_keyboard() -> InlineKeyboardMarkup:
 
 
 async def show_topup_amounts(
-    callback: CallbackQuery, state: FSMContext, **kwargs
+    target: CallbackQuery | Message, state: FSMContext, **kwargs
 ) -> None:
     await state.clear()
-    await callback.message.edit_text(
-        fa.TOPUP_AMOUNTS_HEADER, reply_markup=_amounts_keyboard()
-    )
-    await callback.answer()
+    markup = _amounts_keyboard()
+    if isinstance(target, CallbackQuery):
+        await target.message.edit_text(fa.TOPUP_AMOUNTS_HEADER, reply_markup=markup)
+        await target.answer()
+    else:
+        await target.answer(fa.TOPUP_AMOUNTS_HEADER, reply_markup=markup)
 
 
 @router.callback_query(F.data == "wallet:topup:custom")

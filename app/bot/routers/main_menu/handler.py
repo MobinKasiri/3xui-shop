@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 
 from aiogram import F, Router
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from app.bot.utils.keyboards import K
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -136,6 +136,29 @@ async def cmd_start(
     **kwargs,
 ) -> None:
     await send_welcome(message, user, session, is_new_user=is_new_user, **kwargs)
+
+
+@router.message(Command("buy"))
+async def cmd_buy(message: Message, state, **kwargs) -> None:
+    from app.bot.routers.purchase.handler import show_type_screen
+
+    await show_type_screen(message, state, **kwargs)
+
+
+@router.message(Command("configs"))
+async def cmd_configs(
+    message: Message, user: User, session: AsyncSession, **kwargs
+) -> None:
+    from app.bot.routers.my_services.handler import show_configs_list
+
+    await show_configs_list(message, user, session, **kwargs)
+
+
+@router.message(Command("topup"))
+async def cmd_topup(message: Message, state, **kwargs) -> None:
+    from app.bot.routers.wallet.handler import show_topup_amounts
+
+    await show_topup_amounts(message, state, **kwargs)
 
 
 @router.callback_query(F.data == "main_menu")

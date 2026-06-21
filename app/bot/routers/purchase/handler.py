@@ -192,12 +192,18 @@ def _render_plans_text(tier: dict, plans: list[dict]) -> str:
 
 # ── entry: type screen ───────────────────────────────────────────────────────
 
-async def show_type_screen(callback: CallbackQuery, state: FSMContext, **kwargs) -> None:
+async def show_type_screen(
+    target: CallbackQuery | Message, state: FSMContext, **kwargs
+) -> None:
     await state.clear()
     config = kwargs.get("config")
     vip_tier = config.pricing.get_tier("vip") if config else None
-    await callback.message.edit_text(fa.BUY_TYPE_HEADER, reply_markup=_type_keyboard(vip_tier))
-    await callback.answer()
+    markup = _type_keyboard(vip_tier)
+    if isinstance(target, CallbackQuery):
+        await target.message.edit_text(fa.BUY_TYPE_HEADER, reply_markup=markup)
+        await target.answer()
+    else:
+        await target.answer(fa.BUY_TYPE_HEADER, reply_markup=markup)
 
 
 @router.callback_query(F.data == "buy:type")

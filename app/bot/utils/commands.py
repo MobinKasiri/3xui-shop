@@ -10,7 +10,10 @@ logger = logging.getLogger(__name__)
 
 async def setup(bot: Bot) -> None:
     commands = [
-        BotCommand(command="start", description="منوی اصلی"),
+        BotCommand(command="start", description="Main menu"),
+        BotCommand(command="buy", description="Buy service"),
+        BotCommand(command="configs", description="My configs"),
+        BotCommand(command="topup", description="Increase amount"),
     ]
 
     await bot.set_my_commands(

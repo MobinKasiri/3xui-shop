@@ -50,26 +50,31 @@ def _list_keyboard(configs: list[VPNConfig]) -> InlineKeyboardMarkup:
 
 
 async def show_configs_list(
-    callback: CallbackQuery, user: User, session: AsyncSession, **kwargs
+    target: CallbackQuery | Message, user: User, session: AsyncSession, **kwargs
 ) -> None:
     configs = await VPNConfig.get_for_user(session, user.tg_id)
+    empty_markup = (
+        K()
+        .primary(fa.MAIN_BTN_BUY, callback_data="menu:buy")
+        .back_to_menu()
+        .adjust(1)
+        .as_markup()
+    )
     if not configs:
-        await callback.message.edit_text(
-            fa.CONFIGS_LIST_EMPTY,
-            reply_markup=(
-                K()
-                .primary(fa.MAIN_BTN_BUY, callback_data="menu:buy")
-                .back_to_menu()
-                .adjust(1)
-                .as_markup()
-            ),
-        )
-        await callback.answer()
+        if isinstance(target, CallbackQuery):
+            await target.message.edit_text(fa.CONFIGS_LIST_EMPTY, reply_markup=empty_markup)
+            await target.answer()
+        else:
+            await target.answer(fa.CONFIGS_LIST_EMPTY, reply_markup=empty_markup)
         return
 
     text = fa.CONFIGS_LIST_HEADER.format(count=to_persian_digits(len(configs)))
-    await callback.message.edit_text(text, reply_markup=_list_keyboard(configs))
-    await callback.answer()
+    markup = _list_keyboard(configs)
+    if isinstance(target, CallbackQuery):
+        await target.message.edit_text(text, reply_markup=markup)
+        await target.answer()
+    else:
+        await target.answer(text, reply_markup=markup)
 
 
 # ── detail ───────────────────────────────────────────────────────────────────
