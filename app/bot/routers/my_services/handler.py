@@ -55,7 +55,7 @@ async def show_configs_list(
     configs = await VPNConfig.get_for_user(session, user.tg_id)
     empty_markup = (
         K()
-        .primary(fa.MAIN_BTN_BUY, callback_data="menu:buy")
+        .primary(fa.MAIN_BTN_BUY, callback_data="menu:buy", icon="btn_buy")
         .back_to_menu()
         .adjust(1)
         .as_markup()
@@ -82,17 +82,19 @@ async def show_configs_list(
 def _detail_keyboard(config_id: int, is_active: bool) -> InlineKeyboardMarkup:
     cid = config_id
     kb = K()
-    kb.btn(fa.CONFIG_BTN_USAGE, callback_data=f"cfg:status:{cid}")
-    kb.primary(fa.CONFIG_BTN_GET_CONFIGS, callback_data=f"cfg:links:{cid}")
-    kb.primary(fa.CONFIG_BTN_GET_SUB, callback_data=f"cfg:sub:{cid}")
+    kb.btn(fa.CONFIG_BTN_USAGE, callback_data=f"cfg:status:{cid}", icon="chart")
+    kb.primary(
+        fa.CONFIG_BTN_GET_CONFIGS, callback_data=f"cfg:links:{cid}", icon="copy"
+    )
+    kb.primary(fa.CONFIG_BTN_GET_SUB, callback_data=f"cfg:sub:{cid}", icon="phone")
     toggle_text = fa.CONFIG_BTN_DISABLE if is_active else fa.CONFIG_BTN_ENABLE
     if is_active:
-        kb.danger(toggle_text, callback_data=f"cfg:toggle:{cid}")
+        kb.danger(toggle_text, callback_data=f"cfg:toggle:{cid}", icon="ban")
     else:
-        kb.success(toggle_text, callback_data=f"cfg:toggle:{cid}")
-    kb.btn(fa.CONFIG_BTN_RESET_SUB, callback_data=f"cfg:resetsub:{cid}")
-    kb.btn(fa.CONFIG_BTN_QR, callback_data=f"cfg:qr:{cid}")
-    kb.danger(fa.CONFIG_BTN_DELETE, callback_data=f"cfg:delete:{cid}")
+        kb.success(toggle_text, callback_data=f"cfg:toggle:{cid}", icon="play")
+    kb.btn(fa.CONFIG_BTN_RESET_SUB, callback_data=f"cfg:resetsub:{cid}", icon="refresh")
+    kb.btn(fa.CONFIG_BTN_QR, callback_data=f"cfg:qr:{cid}", icon="phone")
+    kb.danger(fa.CONFIG_BTN_DELETE, callback_data=f"cfg:delete:{cid}", icon="trash")
     return kb.nav("menu:configs").adjust(1, 1, 1, 1, 1, 1, 1, 2).as_markup()
 
 
@@ -377,8 +379,8 @@ async def cb_delete_prompt(
         fa.CONFIG_DELETE_CONFIRM.format(name=cfg.service_name),
         reply_markup=(
             K()
-            .danger(fa.CONFIG_DELETE_YES, callback_data=f"cfg:delyes:{cid}")
-            .primary(fa.CONFIG_DELETE_NO, callback_data=f"cfg:open:{cid}")
+            .danger(fa.CONFIG_DELETE_YES, callback_data=f"cfg:delyes:{cid}", icon="confirm")
+            .primary(fa.CONFIG_DELETE_NO, callback_data=f"cfg:open:{cid}", icon="reject")
             .adjust(2)
             .as_markup()
         ),

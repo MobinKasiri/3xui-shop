@@ -17,8 +17,12 @@ router = Router(name="support")
 def _support_keyboard(support_username: str) -> InlineKeyboardMarkup:
     return (
         K()
-        .btn(fa.SUPPORT_FAQ_BTN, callback_data="support:faq")
-        .primary(fa.SUPPORT_ONLINE_BTN, url=f"https://t.me/{support_username}")
+        .btn(fa.SUPPORT_FAQ_BTN, callback_data="support:faq", icon="faq")
+        .primary(
+            fa.SUPPORT_ONLINE_BTN,
+            url=f"https://t.me/{support_username}",
+            icon="chat",
+        )
         .back_to_menu()
         .adjust(1)
         .as_markup()

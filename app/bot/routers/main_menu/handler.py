@@ -26,16 +26,16 @@ def main_menu_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
     """The main inline keyboard. Shows admin button only for admins."""
     kb = (
         K()
-        .primary(fa.MAIN_BTN_BUY, callback_data="menu:buy")
-        .btn(fa.MAIN_BTN_CONFIGS, callback_data="menu:configs")
-        .primary(fa.MAIN_BTN_BALANCE, callback_data="menu:balance")
-        .btn(fa.MAIN_BTN_ACCOUNT, callback_data="menu:account")
-        .success(fa.MAIN_BTN_FREE, callback_data="menu:free")
-        .btn(fa.MAIN_BTN_APPS, callback_data="menu:apps")
-        .btn(fa.MAIN_BTN_SUPPORT, callback_data="menu:support")
+        .success(fa.MAIN_BTN_BUY, callback_data="menu:buy", icon="btn_buy")
+        .primary(fa.MAIN_BTN_CONFIGS, callback_data="menu:configs", icon="btn_configs")
+        .success(fa.MAIN_BTN_BALANCE, callback_data="menu:balance", icon="btn_balance")
+        .btn(fa.MAIN_BTN_ACCOUNT, callback_data="menu:account", icon="btn_account")
+        .primary(fa.MAIN_BTN_FREE, callback_data="menu:free", icon="btn_free")
+        .btn(fa.MAIN_BTN_APPS, callback_data="menu:apps", icon="btn_apps")
+        .btn(fa.MAIN_BTN_SUPPORT, callback_data="menu:support", icon="btn_support")
     )
     if is_admin:
-        kb.danger(fa.MAIN_BTN_ADMIN, callback_data="menu:admin")
+        kb.danger(fa.MAIN_BTN_ADMIN, callback_data="menu:admin", icon="btn_admin")
         return kb.adjust(2, 2, 2, 1, 1).as_markup()
     return kb.adjust(2, 2, 2, 1).as_markup()
 

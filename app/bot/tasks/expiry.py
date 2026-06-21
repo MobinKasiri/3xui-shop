@@ -62,7 +62,7 @@ async def run_expiry_check(
                 days=to_persian_digits(days_left),
                 remaining_gb=to_persian_digits(f"{remaining_gb:.1f}"),
             )
-            markup = K().primary(fa.NOTIF_NEW_CONFIG_BTN, callback_data="menu:buy").as_markup()
+            markup = K().success(fa.NOTIF_NEW_CONFIG_BTN, callback_data="menu:buy", icon="btn_buy").as_markup()
 
             try:
                 await bot.send_message(

@@ -30,7 +30,7 @@ from app.bot.utils.discount import record_usage, validate_and_apply
 from app.bot.utils.payment_keyboard import card_payment_keyboard
 from app.bot.utils.receipt_storage import persist_receipt_photo, receipt_file_id
 from app.bot.utils.persian import format_toman, normalize_digits, to_persian_digits
-from app.bot.utils.plans_display import render_plans_table, tier_button_label
+from app.bot.utils.plans_display import render_plans_table
 from app.bot.utils.service_name import (
     is_taken,
     numbered_name,
@@ -128,10 +128,13 @@ def _format_plan_label(plan: dict) -> str:
 
 
 def _type_keyboard(vip_tier: dict | None = None) -> InlineKeyboardMarkup:
-    label = tier_button_label(vip_tier) if vip_tier else fa.BUY_VIP_BTN
+    if vip_tier:
+        label = str(vip_tier.get("name", fa.VIP_TIER_NAME_DEFAULT)).strip() or fa.BUY_VIP_BTN
+    else:
+        label = fa.BUY_VIP_BTN
     return (
         K()
-        .primary(label, callback_data="buy:type:vip")
+        .primary(label, callback_data="buy:type:vip", icon="globe")
         .back_to_menu()
         .adjust(1)
         .as_markup()
@@ -157,7 +160,7 @@ def _quantity_back_keyboard() -> InlineKeyboardMarkup:
 def _service_name_keyboard() -> InlineKeyboardMarkup:
     return (
         K()
-        .primary(fa.SERVICE_NAME_RANDOM_BTN, callback_data="buy:name:random")
+        .primary(fa.SERVICE_NAME_RANDOM_BTN, callback_data="buy:name:random", icon="dice")
         .nav("buy:back_to_qty")
         .adjust(1, 2)
         .as_markup()
@@ -167,7 +170,7 @@ def _service_name_keyboard() -> InlineKeyboardMarkup:
 def _discount_keyboard() -> InlineKeyboardMarkup:
     return (
         K()
-        .btn(fa.DISCOUNT_SKIP_BTN, callback_data="buy:discount:skip")
+        .btn(fa.DISCOUNT_SKIP_BTN, callback_data="buy:discount:skip", icon="close")
         .nav("buy:back_to_name")
         .adjust(1, 2)
         .as_markup()
@@ -178,8 +181,8 @@ def _method_keyboard(balance: int, required: int) -> InlineKeyboardMarkup:
     wallet_label = fa.PAY_WALLET_BTN.format(balance=format_toman(balance))
     return (
         K()
-        .success(wallet_label, callback_data="buy:pay:wallet")
-        .primary(fa.PAY_CARD_BTN, callback_data="buy:pay:card")
+        .success(wallet_label, callback_data="buy:pay:wallet", icon="cash")
+        .primary(fa.PAY_CARD_BTN, callback_data="buy:pay:card", icon="card")
         .nav("buy:back_to_discount")
         .adjust(1, 1, 2)
         .as_markup()
@@ -732,7 +735,7 @@ async def _create_configs_for_user(
 def _success_keyboard() -> InlineKeyboardMarkup:
     return (
         K()
-        .primary(fa.MAIN_BTN_CONFIGS, callback_data="menu:configs")
+        .primary(fa.MAIN_BTN_CONFIGS, callback_data="menu:configs", icon="btn_configs")
         .home()
         .adjust(1)
         .as_markup()

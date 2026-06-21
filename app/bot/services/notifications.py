@@ -33,8 +33,8 @@ def _approve_reject_keyboard(approve_cb: str, reject_cb: str, *, wallet: bool) -
     text_btn = fa.ADMIN_APPROVE_WALLET_BTN if wallet else fa.ADMIN_APPROVE_BTN
     return (
         K()
-        .success(text_btn, callback_data=approve_cb)
-        .danger(fa.ADMIN_REJECT_BTN, callback_data=reject_cb)
+        .success(text_btn, callback_data=approve_cb, icon="confirm")
+        .danger(fa.ADMIN_REJECT_BTN, callback_data=reject_cb, icon="reject")
         .adjust(2)
         .as_markup()
     )

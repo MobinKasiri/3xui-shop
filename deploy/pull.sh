@@ -20,6 +20,9 @@ DATA_DIR="${BOT_DATA_HOST:-}"
 
 if [[ -n "$DATA_DIR" && -d "$DATA_DIR" ]]; then
   git pull "$@"
+  if command -v python3 >/dev/null 2>&1; then
+    python3 "${ROOT}/scripts/sync_emoji_packs.py" || true
+  fi
   echo "Git pull OK — live config is outside the repo: ${DATA_DIR}"
   exit 0
 fi
@@ -41,6 +44,10 @@ for f in "${LIVE_FILES[@]}"; do
 done
 
 git pull "$@"
+
+if command -v python3 >/dev/null 2>&1; then
+  python3 "${ROOT}/scripts/sync_emoji_packs.py" || echo "Note: emoji sync skipped (run manually if icons missing)"
+fi
 
 mkdir -p app/data
 for name in plans.json maintenance.json; do

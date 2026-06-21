@@ -65,8 +65,8 @@ class TopupStates(StatesGroup):
 def _profile_keyboard() -> InlineKeyboardMarkup:
     return (
         K()
-        .primary(fa.WALLET_TOPUP_BTN, callback_data="menu:balance")
-        .btn(fa.WALLET_TX_BTN, callback_data="wallet:tx:0")
+        .primary(fa.WALLET_TOPUP_BTN, callback_data="menu:balance", icon="btn_balance")
+        .btn(fa.WALLET_TX_BTN, callback_data="wallet:tx:0", icon="receipt")
         .back_to_menu()
         .adjust(1)
         .as_markup()
@@ -93,7 +93,7 @@ def _amounts_keyboard() -> InlineKeyboardMarkup:
     for amount in PRESETS:
         kb.primary(format_toman(amount) + " ت", callback_data=f"wallet:topup:{amount}")
     return (
-        kb.primary(fa.TOPUP_CUSTOM_BTN, callback_data="wallet:topup:custom")
+        kb.primary(fa.TOPUP_CUSTOM_BTN, callback_data="wallet:topup:custom", icon="edit")
         .back_to_menu()
         .adjust(2, 2, 1, 1, 1)
         .as_markup()

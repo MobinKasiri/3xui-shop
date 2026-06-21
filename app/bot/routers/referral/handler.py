@@ -35,8 +35,9 @@ def _referral_keyboard(ref_link: str) -> InlineKeyboardMarkup:
         .success(
             fa.REFERRAL_SHARE_BTN,
             url=f"https://t.me/share/url?url={quote(ref_link, safe='')}&text={share_text}",
+            icon="share",
         )
-        .primary(fa.REFERRAL_POST_BTN, callback_data="ref:post")
+        .primary(fa.REFERRAL_POST_BTN, callback_data="ref:post", icon="note")
         .back_to_menu()
         .adjust(1)
         .as_markup()

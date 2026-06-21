@@ -48,6 +48,17 @@ logger = logging.getLogger(__name__)
 async def on_startup(bot: Bot, config: Config, db: Database, **kwargs) -> None:
     logger.info("Bot starting up...")
     from app.bot.utils.commands import setup as setup_commands
+    from app.bot.utils.emoji import count_loaded, reload_emoji_cache
+
+    reload_emoji_cache()
+    total, packs = count_loaded()
+    if total:
+        logger.info("Custom emoji ready: %s icons from %s packs", total, packs)
+    else:
+        logger.warning(
+            "No custom emoji IDs loaded — run: python scripts/sync_emoji_packs.py"
+        )
+
     await setup_commands(bot)
 
     # Fill BOT_USERNAME from API if not configured

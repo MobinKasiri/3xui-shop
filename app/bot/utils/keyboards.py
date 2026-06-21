@@ -7,6 +7,7 @@ from aiogram.types import CopyTextButton, InlineKeyboardButton, InlineKeyboardMa
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.bot.i18n import fa
+from app.bot.utils.emoji import btn_label, icon_id
 
 # Telegram Bot API 9.4 — primary (blue), success (green), danger (red)
 PRIMARY = "primary"
@@ -27,10 +28,12 @@ class K:
         callback_data: str | None = None,
         url: str | None = None,
         style: str | None = None,
+        icon: str | None = None,
         copy_text: str | None = None,
         **kwargs: Any,
     ) -> K:
-        args: dict[str, Any] = {"text": text}
+        label = btn_label(icon, text) if icon else text
+        args: dict[str, Any] = {"text": label}
         if callback_data is not None:
             args["callback_data"] = callback_data
         if url is not None:
@@ -39,29 +42,32 @@ class K:
             args["style"] = style
         if copy_text is not None:
             args["copy_text"] = CopyTextButton(text=copy_text)
+        eid = icon_id(icon) if icon else None
+        if eid:
+            args["icon_custom_emoji_id"] = eid
         self._b.button(**args, **kwargs)
         return self
 
-    def primary(self, text: str, **kwargs: Any) -> K:
-        return self.btn(text, style=PRIMARY, **kwargs)
+    def primary(self, text: str, *, icon: str | None = None, **kwargs: Any) -> K:
+        return self.btn(text, style=PRIMARY, icon=icon, **kwargs)
 
-    def success(self, text: str, **kwargs: Any) -> K:
-        return self.btn(text, style=SUCCESS, **kwargs)
+    def success(self, text: str, *, icon: str | None = None, **kwargs: Any) -> K:
+        return self.btn(text, style=SUCCESS, icon=icon, **kwargs)
 
-    def danger(self, text: str, **kwargs: Any) -> K:
-        return self.btn(text, style=DANGER, **kwargs)
+    def danger(self, text: str, *, icon: str | None = None, **kwargs: Any) -> K:
+        return self.btn(text, style=DANGER, icon=icon, **kwargs)
 
     def cancel(self, callback_data: str = "cancel_fsm") -> K:
-        return self.danger(fa.CANCEL_PLAIN, callback_data=callback_data)
+        return self.danger(fa.CANCEL_PLAIN, callback_data=callback_data, icon="cancel")
 
     def back(self, callback_data: str = "main_menu") -> K:
-        return self.btn(fa.BACK, callback_data=callback_data)
+        return self.btn(fa.BACK, callback_data=callback_data, icon="back")
 
     def home(self) -> K:
-        return self.btn(fa.HOME, callback_data="main_menu")
+        return self.btn(fa.HOME, callback_data="main_menu", icon="home")
 
     def back_to_menu(self) -> K:
-        return self.btn(fa.BACK_TO_MENU, callback_data="main_menu")
+        return self.btn(fa.BACK_TO_MENU, callback_data="main_menu", icon="back")
 
     def nav(self, back_callback: str = "main_menu") -> K:
         """Back + home on one row."""
@@ -98,7 +104,7 @@ def cancel_keyboard() -> InlineKeyboardMarkup:
 def confirm_cancel_keyboard(confirm_cb: str) -> InlineKeyboardMarkup:
     return (
         K()
-        .success(fa.CONFIRM, callback_data=confirm_cb)
+        .success(fa.CONFIRM, callback_data=confirm_cb, icon="confirm")
         .cancel()
         .adjust(2)
         .as_markup()

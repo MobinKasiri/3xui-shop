@@ -18,9 +18,9 @@ def card_payment_keyboard(*, toman: int, card: str) -> InlineKeyboardMarkup:
 
     return (
         K()
-        .primary(fa.COPY_RIAL_BTN, copy_text=str(rial))
-        .primary(fa.COPY_TOMAN_BTN, copy_text=str(toman))
-        .primary(fa.COPY_CARD_BTN, copy_text=card_num)
+        .primary(fa.COPY_RIAL_BTN, copy_text=str(rial), icon="copy")
+        .primary(fa.COPY_TOMAN_BTN, copy_text=str(toman), icon="copy")
+        .primary(fa.COPY_CARD_BTN, copy_text=card_num, icon="card")
         .cancel()
         .adjust(2, 1, 1)
         .as_markup()

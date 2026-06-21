@@ -53,7 +53,7 @@ async def run_traffic_check(
                 total_gb=to_persian_digits(f"{total_gb:.1f}"),
                 pct=to_persian_digits(int(pct)),
             )
-            markup = K().primary(fa.NOTIF_NEW_CONFIG_BTN, callback_data="menu:buy").as_markup()
+            markup = K().success(fa.NOTIF_NEW_CONFIG_BTN, callback_data="menu:buy", icon="btn_buy").as_markup()
 
             try:
                 await bot.send_message(
