@@ -51,25 +51,26 @@ cp /etc/letsencrypt/live/bot.nexoranode.xyz/privkey.pem deploy/nginx/certs/
 
 ### 4. Deploy
 
+**First time — move live config outside git (recommended):**
 ```bash
-# From your local machine:
-./deploy/deploy.sh ~/.ssh/your_key
-
-# Or manually on the server:
 cd /opt/nexoranode-bot
-git pull
-cp .env.production .env
-docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d --build
-docker exec nexoranode-bot poetry run alembic -c /app/db/alembic.ini upgrade head
+sudo bash deploy/setup-data-dir.sh   # creates /opt/nexoranode-data, updates .env files
 ```
 
-Or use the wrapper (always loads `/opt/nexoranode-bot/.env`):
-
+**Updates (safe pull — never conflicts with panel-edited plans.json):**
 ```bash
 cd /opt/nexoranode-bot
-chmod +x deploy/compose.sh
+./deploy/pull.sh
+./deploy/compose.sh up -d --build bot
+```
+
+Or manually:
+```bash
+cd /opt/nexoranode-bot
+git pull   # only safe after setup-data-dir.sh OR deploy/pull.sh
+cp .env.production .env   # first deploy only
 ./deploy/compose.sh up -d --build
-./deploy/compose.sh restart bot
+docker exec nexoranode-bot poetry run alembic -c /app/db/alembic.ini upgrade head
 ```
 
 ### 5. Set Telegram Webhook
@@ -125,6 +126,10 @@ Leave the bot running for 24 hours. Watch for:
   cp /etc/letsencrypt/live/bot.nexoranode.xyz/*.pem deploy/nginx/certs/
   docker restart nexoranode-nginx
   ```
-- Update bot: `git pull && docker compose -f deploy/docker-compose.prod.yml up -d --build`
+- Update bot:
+  ```bash
+  cd /opt/nexoranode-bot && ./deploy/pull.sh && ./deploy/compose.sh up -d --build bot
+  ```
+- **Do not** edit `plans.json` in git — use the admin panel. Live file lives in `/opt/nexoranode-data/`.
 - View logs: `docker logs nexoranode-bot -f --tail=100`
 - DB backup: `docker exec nexoranode-postgres pg_dump -U nexora nexorabot > backup.sql`

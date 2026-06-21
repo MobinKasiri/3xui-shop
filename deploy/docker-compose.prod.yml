@@ -21,8 +21,8 @@ services:
         poetry run python /app/__main__.py
       "
     volumes:
-      # Shared with admin panel (plans + receipt images)
-      - ../app/data:/app/data:rw
+      # Live data (plans, maintenance, receipts) — set BOT_DATA_HOST=/opt/nexoranode-data in .env
+      - ${BOT_DATA_HOST:-../app/data}:/app/data:rw
       # SSH keys for direct-node xray sync (Germany → PL/SG nodes)
       - ${NODE_SSH_DIR:-/root/.ssh}:/root/.ssh:ro
     networks:
