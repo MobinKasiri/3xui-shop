@@ -315,7 +315,7 @@ async def cb_name_random(
         names = [base]
     else:
         names = [numbered_name(base, i + 1) for i in range(quantity)]
-        if any(await is_taken(session, n) for n in names):
+        if any([await is_taken(session, n) for n in names]):
             # rare collision — pick another base
             base = await _free_base_name(session)
             names = [numbered_name(base, i + 1) for i in range(quantity)]
