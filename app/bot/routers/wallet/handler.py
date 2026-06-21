@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
 from app.bot.services.notifications import forward_wallet_topup_to_admin
+from app.bot.utils.payment_keyboard import card_payment_keyboard
 from app.bot.utils.jalali import to_jalali
 from app.bot.utils.persian import format_toman, to_persian_digits
 from app.db.models import Transaction, User
@@ -157,7 +158,6 @@ async def _start_card_topup(
 ) -> None:
     config = kwargs.get("config")
     payment_amount = amount
-    rial = payment_amount * 10
 
     await state.update_data(
         topup_amount=amount,
@@ -171,37 +171,16 @@ async def _start_card_topup(
         card=config.payment.CARD_NUMBER if config else "—",
         amount=format_toman(payment_amount),
     )
-    builder = InlineKeyboardBuilder()
-    builder.button(text=fa.AMOUNT_TOMAN_BTN, callback_data=f"wallet:show:toman:{payment_amount}")
-    builder.button(text=fa.AMOUNT_RIAL_BTN, callback_data=f"wallet:show:rial:{rial}")
-    builder.button(text=fa.CARD_NUMBER_BTN, callback_data="wallet:show:card")
-    builder.button(text=fa.CANCEL, callback_data="cancel_fsm")
-    builder.adjust(2, 1, 1)
+    markup = card_payment_keyboard(
+        toman=payment_amount,
+        card=config.payment.CARD_NUMBER if config else "",
+    )
 
     if isinstance(target, CallbackQuery):
-        await target.message.edit_text(text, reply_markup=builder.as_markup())
+        await target.message.edit_text(text, reply_markup=markup)
         await target.answer()
     else:
-        await target.answer(text, reply_markup=builder.as_markup())
-
-
-@router.callback_query(F.data.startswith("wallet:show:toman:"))
-async def cb_show_toman(callback: CallbackQuery, **kwargs) -> None:
-    amt = int(callback.data.rsplit(":", 1)[-1])
-    await callback.answer(fa.AMOUNT_TOMAN_ALERT.format(amount=format_toman(amt)), show_alert=True)
-
-
-@router.callback_query(F.data.startswith("wallet:show:rial:"))
-async def cb_show_rial(callback: CallbackQuery, **kwargs) -> None:
-    amt = int(callback.data.rsplit(":", 1)[-1])
-    await callback.answer(fa.AMOUNT_RIAL_ALERT.format(amount=format_toman(amt)), show_alert=True)
-
-
-@router.callback_query(F.data == "wallet:show:card")
-async def cb_show_card(callback: CallbackQuery, **kwargs) -> None:
-    config = kwargs.get("config")
-    card = config.payment.CARD_NUMBER if config else "—"
-    await callback.answer(fa.CARD_NUMBER_ALERT.format(card=card), show_alert=True)
+        await target.answer(text, reply_markup=markup)
 
 
 @router.message(TopupStates.awaiting_receipt, F.photo)

@@ -27,6 +27,7 @@ from app.bot.i18n import fa
 from app.bot.services.notifications import forward_purchase_to_admin
 from app.bot.services.wallet import deduct
 from app.bot.utils.discount import record_usage, validate_and_apply
+from app.bot.utils.payment_keyboard import card_payment_keyboard
 from app.bot.utils.persian import format_toman, to_persian_digits
 from app.bot.utils.service_name import (
     is_taken,
@@ -177,16 +178,6 @@ def _method_keyboard(balance: int, required: int) -> InlineKeyboardMarkup:
     builder.button(text=fa.BACK, callback_data="buy:back_to_discount")
     builder.button(text=fa.HOME, callback_data="main_menu")
     builder.adjust(1, 1, 2)
-    return builder.as_markup()
-
-
-def _card_keyboard(toman: int, rial: int, card: str) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.button(text=fa.AMOUNT_TOMAN_BTN, callback_data=f"buy:show:toman:{toman}")
-    builder.button(text=fa.AMOUNT_RIAL_BTN, callback_data=f"buy:show:rial:{rial}")
-    builder.button(text=fa.CARD_NUMBER_BTN, callback_data="buy:show:card")
-    builder.button(text=fa.CANCEL, callback_data="cancel_fsm")
-    builder.adjust(2, 1, 1)
     return builder.as_markup()
 
 
@@ -610,7 +601,6 @@ async def cb_pay_card(
     data = await state.get_data()
     final_amount = _resolve_final_amount(data)
     payment_amount = final_amount
-    rial = payment_amount * 10
 
     await state.update_data(
         payment_amount=payment_amount,
@@ -626,34 +616,12 @@ async def cb_pay_card(
     )
     await callback.message.edit_text(
         text,
-        reply_markup=_card_keyboard(payment_amount, rial, config.payment.CARD_NUMBER if config else ""),
+        reply_markup=card_payment_keyboard(
+            toman=payment_amount,
+            card=config.payment.CARD_NUMBER if config else "",
+        ),
     )
     await callback.answer()
-
-
-@router.callback_query(F.data.startswith("buy:show:toman:"))
-async def cb_show_toman(callback: CallbackQuery, **kwargs) -> None:
-    amt = int(callback.data.rsplit(":", 1)[-1])
-    await callback.answer(
-        fa.AMOUNT_TOMAN_ALERT.format(amount=format_toman(amt)),
-        show_alert=True,
-    )
-
-
-@router.callback_query(F.data.startswith("buy:show:rial:"))
-async def cb_show_rial(callback: CallbackQuery, **kwargs) -> None:
-    amt = int(callback.data.rsplit(":", 1)[-1])
-    await callback.answer(
-        fa.AMOUNT_RIAL_ALERT.format(amount=format_toman(amt)),
-        show_alert=True,
-    )
-
-
-@router.callback_query(F.data == "buy:show:card")
-async def cb_show_card(callback: CallbackQuery, **kwargs) -> None:
-    config = kwargs.get("config")
-    card = config.payment.CARD_NUMBER if config else "—"
-    await callback.answer(fa.CARD_NUMBER_ALERT.format(card=card), show_alert=True)
 
 
 @router.message(PurchaseStates.awaiting_receipt, F.photo)
