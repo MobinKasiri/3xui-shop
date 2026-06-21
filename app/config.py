@@ -130,6 +130,10 @@ class PricingConfig:
         tier = self.TIERS.get(tier_id, {})
         return tier.get("plans", [])
 
+    def get_tier(self, tier_id: str) -> dict:
+        self.reload_plans_if_changed()
+        return self.TIERS.get(tier_id, {})
+
     def tier_name(self, tier_id: str) -> str:
         self.reload_plans_if_changed()
         return self.TIERS.get(tier_id, {}).get("name", "")

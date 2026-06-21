@@ -30,6 +30,7 @@ from app.bot.utils.discount import record_usage, validate_and_apply
 from app.bot.utils.payment_keyboard import card_payment_keyboard
 from app.bot.utils.receipt_storage import persist_receipt_photo, receipt_file_id
 from app.bot.utils.persian import format_toman, normalize_digits, to_persian_digits
+from app.bot.utils.plans_display import render_plans_table, tier_button_label
 from app.bot.utils.service_name import (
     is_taken,
     numbered_name,
@@ -126,10 +127,11 @@ def _format_plan_label(plan: dict) -> str:
     )
 
 
-def _type_keyboard() -> InlineKeyboardMarkup:
+def _type_keyboard(vip_tier: dict | None = None) -> InlineKeyboardMarkup:
+    label = tier_button_label(vip_tier) if vip_tier else fa.BUY_VIP_BTN
     return (
         K()
-        .primary(fa.BUY_VIP_BTN, callback_data="buy:type:vip")
+        .primary(label, callback_data="buy:type:vip")
         .back_to_menu()
         .adjust(1)
         .as_markup()
@@ -184,37 +186,17 @@ def _method_keyboard(balance: int, required: int) -> InlineKeyboardMarkup:
     )
 
 
-def _render_plans_text(plans: list[dict]) -> str:
-    rows = [fa.VIP_PLANS_TABLE_HEADER, ""]
-    for plan in plans:
-        emoji = plan.get("emoji", "")
-        if plan.get("recommended"):
-            prefix = "⭐ "
-            badge = " · (پیشنهادی)"
-        elif emoji:
-            prefix = f"{emoji} "
-            badge = ""
-        else:
-            prefix = "▫️ "
-            badge = ""
-        rows.append(
-            fa.VIP_PLANS_TABLE_ROW.format(
-                emoji=prefix,
-                gb=to_persian_digits(plan["gb"]),
-                days=to_persian_digits(plan["days"]),
-                price=format_toman(plan["price"]),
-                badge=badge,
-            )
-        )
-    rows.append(fa.VIP_PLANS_TABLE_FOOTER)
-    return "\n".join(rows)
+def _render_plans_text(tier: dict, plans: list[dict]) -> str:
+    return render_plans_table(tier, plans)
 
 
 # ── entry: type screen ───────────────────────────────────────────────────────
 
 async def show_type_screen(callback: CallbackQuery, state: FSMContext, **kwargs) -> None:
     await state.clear()
-    await callback.message.edit_text(fa.BUY_TYPE_HEADER, reply_markup=_type_keyboard())
+    config = kwargs.get("config")
+    vip_tier = config.pricing.get_tier("vip") if config else None
+    await callback.message.edit_text(fa.BUY_TYPE_HEADER, reply_markup=_type_keyboard(vip_tier))
     await callback.answer()
 
 
@@ -230,12 +212,13 @@ async def cb_type_vip(callback: CallbackQuery, state: FSMContext, **kwargs) -> N
         await callback.answer(fa.ERRORS["general"], show_alert=True)
         return
     plans = config.pricing.list_plans("vip")
+    tier = config.pricing.get_tier("vip")
     if not plans:
         await callback.answer(fa.ERRORS["general"], show_alert=True)
         return
     await state.set_state(PurchaseStates.plan)
     await state.update_data(tier="vip")
-    text = _render_plans_text(plans)
+    text = _render_plans_text(tier, plans)
     await callback.message.edit_text(text, reply_markup=_plans_keyboard(plans))
     await callback.answer()
 

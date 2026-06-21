@@ -115,14 +115,18 @@ ERRORS = {
 
 BUY_TYPE_HEADER = "🛒 برای خرید سرویس لطفاً یکی از دسته‌بندی‌های زیر را انتخاب کنید."
 
-BUY_VIP_BTN = "🌍 سرویس VIP چند لوکیشن"
+BUY_VIP_BTN = "🌍 سرویس VIP چند لوکیشن"  # fallback; live label comes from plans.json
 
-# ─── Buy: plans table ────────────────────────────────────────────────────────
+VIP_TIER_NAME_DEFAULT = "سرویس VIP چند لوکیشن"
+VIP_PLANS_TABLE_SUBTITLE_DEFAULT = "یک اشتراک — همه سرورها فعال می‌شوند:"
+VIP_PLANS_TABLE_LOCATIONS_DEFAULT = "🇩🇪 آلمان · 🇵🇱 لهستان · 🇸🇬 سنگاپور · 🇺🇸 آمریکا"
+VIP_PLANS_TABLE_FOOTER_DEFAULT = "👇 پلن مورد نظر را انتخاب کنید:"
 
+# Legacy — kept for imports; bot builds header from plans.json
 VIP_PLANS_TABLE_HEADER = (
     "🌍 <b>سرویس VIP چند لوکیشن</b>\n\n"
     "یک اشتراک — همه سرورها فعال می‌شوند:\n"
-    "🇩🇪 آلمان · 🇵🇱 لهستان · 🇸🇬 سنگاپور · … 🇺🇸 آمریکا"
+    "🇩🇪 آلمان · 🇵🇱 لهستان · 🇸🇬 سنگاپور · 🇺🇸 آمریکا"
 )
 VIP_PLANS_TABLE_ROW = "  {emoji}{gb} گیگ · {days} روز · <b>{price}</b> تومان{badge}"
 VIP_PLANS_TABLE_FOOTER = "\n👇 پلن مورد نظر را انتخاب کنید:"
