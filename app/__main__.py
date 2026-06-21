@@ -202,11 +202,26 @@ async def main() -> None:
         )
     else:
         app = web.Application()
+        app["config"] = config
 
         async def health_handler(_request: web.Request) -> web.Response:
             return web.Response(text="OK", status=200)
 
+        async def node_sync_version_handler(request: web.Request) -> web.Response:
+            from app.bot.services.node_sync_signal import read_node_sync_version
+
+            expected = (config.xui.NODE_SYNC_TRIGGER_TOKEN or "").strip()
+            if not expected:
+                return web.Response(status=404, text="disabled")
+            auth = request.headers.get("Authorization", "")
+            token = auth[7:].strip() if auth.startswith("Bearer ") else ""
+            if token != expected:
+                return web.Response(status=401, text="unauthorized")
+            ver = await read_node_sync_version(config)
+            return web.Response(text=str(ver), content_type="text/plain")
+
         app.router.add_get("/health", health_handler)
+        app.router.add_get("/internal/node-sync/v", node_sync_version_handler)
 
         webhook_requests_handler = SimpleRequestHandler(
             dispatcher=dispatcher,

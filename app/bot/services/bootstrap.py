@@ -76,6 +76,9 @@ async def refresh_inbound_ids(config: Config) -> list[int]:
 
 def get_vpn_service(config: Config) -> VPNService | None:
     if INBOUND_IDS and xui_service:
+        async def _notify() -> None:
+            await bump_node_sync(config)
+
         return VPNService(
             xui=xui_service,
             inbound_ids=INBOUND_IDS,
@@ -87,6 +90,7 @@ def get_vpn_service(config: Config) -> VPNService | None:
             node_ssh_user=config.xui.NODE_SSH_USER,
             node_ssh_port=config.xui.NODE_SSH_PORT,
             node_ssh_identity=config.xui.NODE_SSH_IDENTITY,
+            notify_panel_clients_changed=_notify,
         )
     return None
 

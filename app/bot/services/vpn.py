@@ -65,6 +65,7 @@ class VPNService:
         node_ssh_user: str = "root",
         node_ssh_port: int = 22,
         node_ssh_identity: str = "",
+        notify_panel_clients_changed: Callable[[], Awaitable[None]] | None = None,
     ) -> None:
         self.xui = xui
         self.inbound_ids = list(inbound_ids)
@@ -76,6 +77,11 @@ class VPNService:
         self._node_ssh_user = node_ssh_user
         self._node_ssh_port = node_ssh_port
         self._node_ssh_identity = node_ssh_identity
+        self._notify_panel_clients_changed = notify_panel_clients_changed
+
+    async def _signal_direct_nodes(self) -> None:
+        if self._notify_panel_clients_changed:
+            await self._notify_panel_clients_changed()
 
     async def _active_inbound_ids(self) -> list[int]:
         """Re-fetch enabled inbounds so new nodes appear without bot restart."""
@@ -176,6 +182,7 @@ class VPNService:
             "Created config user=%s name=%s sub=%s inbounds=%s",
             user_id, service_name, sub_url, payload.inbound_ids,
         )
+        await self._signal_direct_nodes()
         return VPNConfigResult(config=config, subscription_url=sub_url)
 
     # ── bulk-create ──────────────────────────────────────────────────────────
@@ -224,6 +231,7 @@ class VPNService:
         except XUIError as e:
             logger.warning("Panel delete failed for %s: %s", config.panel_email, e)
         await VPNConfig.delete(session, config.id)
+        await self._signal_direct_nodes()
 
     async def reset_sub(self, session: AsyncSession, config: VPNConfig) -> VPNConfig:
         new_sub_id = _make_sub_id()

@@ -46,6 +46,7 @@ class XUIConfig:
     NODE_SSH_USER: str = "root"
     NODE_SSH_PORT: int = 22
     NODE_SSH_IDENTITY: str = ""
+    NODE_SYNC_TRIGGER_TOKEN: str = ""
 
     @property
     def base_url(self) -> str:
@@ -258,6 +259,7 @@ def load_config() -> Config:
             NODE_SSH_USER=env.str("NODE_SSH_USER", default="root"),
             NODE_SSH_PORT=_int_env(env, "NODE_SSH_PORT", default=22),
             NODE_SSH_IDENTITY=env.str("NODE_SSH_IDENTITY", default=""),
+            NODE_SYNC_TRIGGER_TOKEN=env.str("NODE_SYNC_TRIGGER_TOKEN", default=""),
         ),
         database=DatabaseConfig(
             URL=env.str(
