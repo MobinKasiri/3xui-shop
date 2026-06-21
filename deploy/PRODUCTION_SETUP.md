@@ -1,4 +1,4 @@
-# Nexoranode VPN Bot — Production Deployment Checklist
+# NC VPN Bot — Production Deployment Checklist
 
 ## Phase 5 — Pre-Deploy Steps (Human Actions Required)
 
@@ -11,7 +11,7 @@ nano .env.production
 ```
 
 Required fields:
-- `BOT_TOKEN` — real BotFather token for `@vpn_nexora_bot`
+- `BOT_TOKEN` — BotFather token for `@nc_vpn_bot` (see [BOTFATHER_SETUP.md](../BOTFATHER_SETUP.md))
 - `BOT_ADMINS` — your Telegram numeric ID (e.g. `503376556`)
 - `BOT_DOMAIN` — `bot.nexoranode.xyz:8443` (port 8443 because 443 is used by Reality)
 - `NGINX_HTTPS_PORT` — `8443`

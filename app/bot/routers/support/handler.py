@@ -48,7 +48,7 @@ async def show_support_menu(callback: CallbackQuery, **kwargs) -> None:
 async def cb_support_faq(callback: CallbackQuery, **kwargs) -> None:
     config = kwargs.get("config")
     support_username = config.payment.SUPPORT_USERNAME if config else "support"
-    bot_username = config.bot.USERNAME if config else "nexorabot"
+    bot_username = config.bot.USERNAME if config else "nc_vpn_bot"
     text = fa.FAQ_TEXT.format(
         bot_username=bot_username,
         support_username=support_username,

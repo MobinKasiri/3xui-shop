@@ -226,8 +226,8 @@ def load_config() -> Config:
             bot_port,
         )
 
-    support_username = env.str("SUPPORT_USERNAME", default="nexorasupport").lstrip("@")
-    bot_username = env.str("BOT_USERNAME", default="vpn_nexora_bot").lstrip("@")
+    support_username = env.str("SUPPORT_USERNAME", default="ncvpn_support").lstrip("@")
+    bot_username = env.str("BOT_USERNAME", default="nc_vpn_bot").lstrip("@")
 
     plans_data, plans_path = _load_plans(env)
     pricing = PricingConfig(
@@ -285,7 +285,7 @@ def load_config() -> Config:
         ),
         payment=PaymentConfig(
             CARD_NUMBER=env.str("CARD_NUMBER", default="6037-XXXX-XXXX-XXXX"),
-            CARD_OWNER=env.str("CARD_OWNER", default="نکسورانود"),
+            CARD_OWNER=env.str("CARD_OWNER", default="NC VPN"),
             CARD_BANK=env.str("CARD_BANK", default="ملت"),
             ADMIN_CHAT_ID=admin_chat_id,
             SUPPORT_USERNAME=support_username,

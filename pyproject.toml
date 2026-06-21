@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "nexoranode-bot"
+name = "nc-vpn-bot"
 version = "2.0.0"
-description = "Nexoranode VPN Telegram bot — Persian-only, 3X-UI v3.3.1, multi-config, card-to-card payments."
-authors = ["nexoranode"]
+description = "NC VPN Telegram bot — Persian-only, 3X-UI v3.3.1, multi-config, card-to-card payments."
+authors = ["nc-vpn"]
 readme = "README.md"
 package-mode = false
 

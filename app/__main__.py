@@ -148,7 +148,7 @@ async def main() -> None:
         level=getattr(logging, config.logging.LEVEL.upper(), logging.DEBUG),
         format=config.logging.FORMAT,
     )
-    logger.info("Nexoranode VPN Bot starting...")
+    logger.info("NC VPN Bot starting...")
 
     db = Database(config.database)
     storage = RedisStorage.from_url(config.redis.url())

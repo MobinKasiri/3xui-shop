@@ -46,7 +46,7 @@ async def show_referral_landing(
 ) -> None:
     config = kwargs.get("config")
     bot_username = config.bot.USERNAME if config else (
-        (await callback.bot.get_me()).username or "nexorabot"
+        (await callback.bot.get_me()).username or "nc_vpn_bot"
     )
     ref_link = _ref_link(bot_username, user.referral_code)
 
@@ -82,7 +82,7 @@ async def cb_ready_post(
 ) -> None:
     config = kwargs.get("config")
     bot_username = config.bot.USERNAME if config else (
-        (await callback.bot.get_me()).username or "nexorabot"
+        (await callback.bot.get_me()).username or "nc_vpn_bot"
     )
     ref_link = _ref_link(bot_username, user.referral_code)
     post = fa.REFERRAL_READY_POST.format(ref_link=ref_link)
