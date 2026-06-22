@@ -11,8 +11,9 @@ import logging
 from urllib.parse import quote
 
 from aiogram import F, Router
-from aiogram.types import CallbackQuery, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardMarkup
 from app.bot.utils.keyboards import K
+from app.bot.utils.referral_post import resolve_referral_post_image
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
@@ -90,11 +91,25 @@ async def cb_ready_post(
     ref_link = _ref_link(bot_username, user.referral_code)
     post = fa.REFERRAL_READY_POST.format(ref_link=ref_link)
 
+    explicit = config.bot.REFERRAL_POST_IMAGE if config else None
+    data_dir = config.pricing.plans_file.parent if config else None
+    image_path = resolve_referral_post_image(explicit, data_dir=data_dir)
+
+    if image_path:
+        await callback.message.answer_photo(
+            photo=FSInputFile(image_path),
+            caption=post,
+            parse_mode="HTML",
+        )
+        hint = fa.REFERRAL_READY_POST_HINT_WITH_IMAGE
+    else:
+        await callback.message.answer(
+            post, parse_mode="HTML", disable_web_page_preview=True
+        )
+        hint = fa.REFERRAL_READY_POST_HINT
+
     await callback.message.answer(
-        post, parse_mode="HTML", disable_web_page_preview=True
-    )
-    await callback.message.answer(
-        fa.REFERRAL_READY_POST_HINT,
+        hint,
         reply_markup=K().nav("menu:free").adjust(2).as_markup(),
     )
     await callback.answer()

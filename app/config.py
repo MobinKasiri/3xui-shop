@@ -31,6 +31,7 @@ class BotConfig:
     USE_POLLING: bool
     CHANNEL_GATE_ENABLED: bool = False
     REQUIRED_CHANNELS: tuple[RequiredChannel, ...] = ()
+    REFERRAL_POST_IMAGE: Path | None = None
 
     @property
     def gate_channels(self) -> tuple[RequiredChannel, ...]:
@@ -239,6 +240,9 @@ def load_config() -> Config:
     support_username = env.str("SUPPORT_USERNAME", default="ncvpn_support").lstrip("@")
     bot_username = env.str("BOT_USERNAME", default="nc_vpn_bot").lstrip("@")
 
+    referral_image_raw = env.str("REFERRAL_POST_IMAGE", default="").strip()
+    referral_post_image = Path(referral_image_raw) if referral_image_raw else None
+
     plans_data, plans_path = _load_plans(env)
     pricing = PricingConfig(
         TIERS=plans_data,
@@ -263,6 +267,7 @@ def load_config() -> Config:
             REQUIRED_CHANNELS=parse_required_channels(
                 env.str("REQUIRED_CHANNELS", default="")
             ),
+            REFERRAL_POST_IMAGE=referral_post_image,
         ),
         xui=XUIConfig(
             HOST=env.str("XUI_HOST", default="https://p.nexoranode.xyz:2087"),

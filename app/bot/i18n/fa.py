@@ -448,6 +448,9 @@ REFERRAL_READY_POST = (
     "{ref_link}"
 )
 REFERRAL_READY_POST_HINT = f"{p('confirm')}متن آماده‌ست، می‌تونی فوروارد کنی."
+REFERRAL_READY_POST_HINT_WITH_IMAGE = (
+    f"{p('confirm')}عکس و متن آماده‌ست، می‌تونی فوروارد کنی."
+)
 
 # ─── Apps ────────────────────────────────────────────────────────────────────
 
