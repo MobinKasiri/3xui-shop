@@ -58,6 +58,14 @@ def icon_fallback(key: str) -> str:
     return str(_spec(key).get("fallback", ""))
 
 
+def btn_icon_fallback(key: str) -> str:
+    """Minimal emoji for main-menu buttons when vector icons are not synced."""
+    spec = _spec(key)
+    if not spec:
+        return ""
+    return str(spec.get("btn_fallback") or spec.get("fallback", ""))
+
+
 def icon_id(key: str) -> str | None:
     if not _enabled():
         return None
@@ -90,13 +98,13 @@ def p(key: str) -> str:
 
 
 def btn_label(key: str | None, text: str) -> str:
-    """Buttons: vector icon via API when synced; otherwise emoji + text."""
+    """Buttons: vector icon via API when synced; else one minimal emoji + text."""
     text = text.strip()
     if not key:
         return text
     if icon_id(key):
         return text
-    fb = icon_fallback(key)
+    fb = btn_icon_fallback(key) if key.startswith("btn_") else icon_fallback(key)
     if not fb:
         return text
     if text.startswith(fb):
