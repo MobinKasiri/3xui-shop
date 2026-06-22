@@ -26,11 +26,11 @@ def main_menu_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
     """The main inline keyboard. Shows admin button only for admins."""
     kb = (
         K()
-        .success(fa.MAIN_BTN_BUY, callback_data="menu:buy", icon="btn_buy")
-        .primary(fa.MAIN_BTN_CONFIGS, callback_data="menu:configs", icon="btn_configs")
-        .success(fa.MAIN_BTN_BALANCE, callback_data="menu:balance", icon="btn_balance")
+        .btn(fa.MAIN_BTN_BUY, callback_data="menu:buy", icon="btn_buy")
+        .btn(fa.MAIN_BTN_CONFIGS, callback_data="menu:configs", icon="btn_configs")
+        .btn(fa.MAIN_BTN_BALANCE, callback_data="menu:balance", icon="btn_balance")
         .btn(fa.MAIN_BTN_ACCOUNT, callback_data="menu:account", icon="btn_account")
-        .primary(fa.MAIN_BTN_FREE, callback_data="menu:free", icon="btn_free")
+        .btn(fa.MAIN_BTN_FREE, callback_data="menu:free", icon="btn_free")
         .btn(fa.MAIN_BTN_APPS, callback_data="menu:apps", icon="btn_apps")
         .btn(fa.MAIN_BTN_SUPPORT, callback_data="menu:support", icon="btn_support")
     )

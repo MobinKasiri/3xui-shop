@@ -86,12 +86,9 @@ def _detail_keyboard(config_id: int, is_active: bool) -> InlineKeyboardMarkup:
     kb.primary(
         fa.CONFIG_BTN_GET_CONFIGS, callback_data=f"cfg:links:{cid}", icon="copy"
     )
-    kb.primary(fa.CONFIG_BTN_GET_SUB, callback_data=f"cfg:sub:{cid}", icon="phone")
+    kb.btn(fa.CONFIG_BTN_GET_SUB, callback_data=f"cfg:sub:{cid}", icon="phone")
     toggle_text = fa.CONFIG_BTN_DISABLE if is_active else fa.CONFIG_BTN_ENABLE
-    if is_active:
-        kb.danger(toggle_text, callback_data=f"cfg:toggle:{cid}", icon="ban")
-    else:
-        kb.success(toggle_text, callback_data=f"cfg:toggle:{cid}", icon="play")
+    kb.btn(toggle_text, callback_data=f"cfg:toggle:{cid}", icon="ban" if is_active else "play")
     kb.btn(fa.CONFIG_BTN_RESET_SUB, callback_data=f"cfg:resetsub:{cid}", icon="refresh")
     kb.btn(fa.CONFIG_BTN_QR, callback_data=f"cfg:qr:{cid}", icon="phone")
     kb.danger(fa.CONFIG_BTN_DELETE, callback_data=f"cfg:delete:{cid}", icon="trash")
@@ -380,7 +377,7 @@ async def cb_delete_prompt(
         reply_markup=(
             K()
             .danger(fa.CONFIG_DELETE_YES, callback_data=f"cfg:delyes:{cid}", icon="confirm")
-            .primary(fa.CONFIG_DELETE_NO, callback_data=f"cfg:open:{cid}", icon="reject")
+            .btn(fa.CONFIG_DELETE_NO, callback_data=f"cfg:open:{cid}", icon="reject")
             .adjust(2)
             .as_markup()
         ),

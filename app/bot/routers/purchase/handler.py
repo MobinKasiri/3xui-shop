@@ -30,6 +30,7 @@ from app.bot.utils.discount import record_usage, validate_and_apply
 from app.bot.utils.payment_keyboard import card_payment_keyboard
 from app.bot.utils.receipt_storage import persist_receipt_photo, receipt_file_id
 from app.bot.utils.persian import format_toman, normalize_digits, to_persian_digits
+from app.bot.utils.emoji import strip_html_emoji
 from app.bot.utils.plans_display import render_plans_table
 from app.bot.utils.service_name import (
     is_taken,
@@ -108,7 +109,7 @@ def _back_home_row() -> tuple[str, str]:
 
 
 def _format_plan_label(plan: dict) -> str:
-    emoji = plan.get("emoji", "")
+    emoji = strip_html_emoji(str(plan.get("emoji", "")))
     recommended = plan.get("recommended")
     if recommended:
         lead = "• "
@@ -160,7 +161,7 @@ def _quantity_back_keyboard() -> InlineKeyboardMarkup:
 def _service_name_keyboard() -> InlineKeyboardMarkup:
     return (
         K()
-        .primary(fa.SERVICE_NAME_RANDOM_BTN, callback_data="buy:name:random", icon="dice")
+        .btn(fa.SERVICE_NAME_RANDOM_BTN, callback_data="buy:name:random", icon="dice")
         .nav("buy:back_to_qty")
         .adjust(1, 2)
         .as_markup()
@@ -182,7 +183,7 @@ def _method_keyboard(balance: int, required: int) -> InlineKeyboardMarkup:
     return (
         K()
         .success(wallet_label, callback_data="buy:pay:wallet", icon="cash")
-        .primary(fa.PAY_CARD_BTN, callback_data="buy:pay:card", icon="card")
+        .btn(fa.PAY_CARD_BTN, callback_data="buy:pay:card", icon="card")
         .nav("buy:back_to_discount")
         .adjust(1, 1, 2)
         .as_markup()
@@ -735,7 +736,7 @@ async def _create_configs_for_user(
 def _success_keyboard() -> InlineKeyboardMarkup:
     return (
         K()
-        .primary(fa.MAIN_BTN_CONFIGS, callback_data="menu:configs", icon="btn_configs")
+        .btn(fa.MAIN_BTN_CONFIGS, callback_data="menu:configs", icon="btn_configs")
         .home()
         .adjust(1)
         .as_markup()

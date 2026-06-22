@@ -9,13 +9,14 @@ from app.bot.utils.emoji import i, p
 
 # ─── Common ──────────────────────────────────────────────────────────────────
 
-BACK = f"{p('back')} بازگشت"
-BACK_DOUBLE = f"{p('back')}{p('back')} بازگشت"
-BACK_TO_MENU = f"{p('home')} بازگشت به منوی اصلی"
-HOME = f"{p('home')} منوی اصلی"
-CANCEL = f"{p('cancel')} لغو"
-CONFIRM = f"{p('confirm')} تایید"
-REJECT = f"{p('reject')} رد کردن"
+# Plain text — emoji added by keyboards via icon= (Unicode only, never HTML)
+BACK = "بازگشت"
+BACK_DOUBLE = "بازگشت"
+BACK_TO_MENU = "بازگشت به منوی اصلی"
+HOME = "منوی اصلی"
+CANCEL = "لغو"
+CONFIRM = "تایید"
+REJECT = "رد کردن"
 CLOSE = f"{p('close')}بستن"
 REFRESH = f"{p('refresh')}بروزرسانی"
 COMING_SOON = f"{p('soon')}این بخش به‌زودی فعال می‌شود."
@@ -51,22 +52,22 @@ CHANNEL_GATE_NOT_JOINED = (
 )
 
 WELCOME = (
-    f"{p('wave')}خوش اومدی به <b>ان‌سی‌وی‌پی‌ان</b>!\n\n"
-    "اینجا می‌تونی VPN پرسرعت و پایدار بگیری\n"
-    "اتصال سریع و بدون قطعی، مجهز به پروتکل‌های مدرن\n"
-    "پشتیبانی 24 ساعته در کنارت هستیم\n\n"
+    f"خوش اومدی به <b>ان‌سی‌وی‌پی‌ان</b>! {i('wave')}\n\n"
+    f"{p('globe')}اینجا می‌تونی VPN پرسرعت و پایدار بگیری\n"
+    f"{p('bolt')}اتصال سریع و بدون قطعی، مجهز به پروتکل‌های مدرن\n"
+    f"{p('handshake')}پشتیبانی 24 ساعته در کنارت هستیم\n\n"
     "از گزینه‌های زیر یکی رو انتخاب کن:"
 )
 
-# Home menu — emoji baked into label (always visible); vector icon replaces when synced
-MAIN_BTN_BUY = "🔗 خرید سرویس"
-MAIN_BTN_CONFIGS = "🗃️ مدیریت کانفیگ‌ها"
-MAIN_BTN_BALANCE = "💳 افزایش موجودی"
-MAIN_BTN_ACCOUNT = "👤 حساب کاربری"
-MAIN_BTN_FREE = "🎁 کانفیگ رایگان"
-MAIN_BTN_SUPPORT = "💬 ارتباط با پشتیبانی"
-MAIN_BTN_APPS = "📱 دریافت اپلیکیشن‌ها"
-MAIN_BTN_ADMIN = "⚙️ پنل مدیریت"
+# Home menu — plain labels; emoji appended at end via icon= in main_menu_keyboard
+MAIN_BTN_BUY = "خرید سرویس"
+MAIN_BTN_CONFIGS = "مدیریت کانفیگ‌ها"
+MAIN_BTN_BALANCE = "افزایش موجودی"
+MAIN_BTN_ACCOUNT = "حساب کاربری"
+MAIN_BTN_FREE = "کانفیگ رایگان"
+MAIN_BTN_SUPPORT = "ارتباط با پشتیبانی"
+MAIN_BTN_APPS = "دریافت اپلیکیشن‌ها"
+MAIN_BTN_ADMIN = "پنل مدیریت"
 
 CMD_START = "منوی اصلی"
 CMD_BUY = "خرید سرویس"
@@ -130,7 +131,7 @@ ERRORS = {
 
 BUY_TYPE_HEADER = f"{p('cart')}برای خرید سرویس لطفاً یکی از دسته‌بندی‌های زیر را انتخاب کنید."
 
-BUY_VIP_BTN = "🌐 سرویس VIP چند لوکیشن"
+BUY_VIP_BTN = "سرویس VIP چند لوکیشن"
 
 VIP_TIER_NAME_DEFAULT = "سرویس VIP چند لوکیشن"
 VIP_PLANS_TABLE_SUBTITLE_DEFAULT = "یک اشتراک — همه سرورها فعال می‌شوند:"
@@ -227,7 +228,7 @@ CARD_PAYMENT = (
 COPY_RIAL_BTN = "مبلغ ریال"
 COPY_TOMAN_BTN = "مبلغ تومان"
 COPY_CARD_BTN = "شماره کارت"
-CANCEL_PLAIN = "❌ لغو"
+CANCEL_PLAIN = "لغو"
 
 RECEIPT_RECEIVED = (
     f"{p('confirm')}رسید پرداخت دریافت شد!\n\n"

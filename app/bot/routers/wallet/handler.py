@@ -91,9 +91,9 @@ async def show_profile(
 def _amounts_keyboard() -> InlineKeyboardMarkup:
     kb = K()
     for amount in PRESETS:
-        kb.primary(format_toman(amount) + " ت", callback_data=f"wallet:topup:{amount}")
+        kb.btn(format_toman(amount) + " ت", callback_data=f"wallet:topup:{amount}")
     return (
-        kb.primary(fa.TOPUP_CUSTOM_BTN, callback_data="wallet:topup:custom", icon="edit")
+        kb.btn(fa.TOPUP_CUSTOM_BTN, callback_data="wallet:topup:custom", icon="edit")
         .back_to_menu()
         .adjust(2, 2, 1, 1, 1)
         .as_markup()

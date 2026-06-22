@@ -387,23 +387,23 @@
    "btn_buy": {
       "pack": "vector_icons_by_fStikBot",
       "index": 16,
-      "alt": "🔗",
-      "fallback": "🔗",
-      "btn_fallback": "🔗"
+      "alt": "🚀",
+      "fallback": "🚀",
+      "btn_fallback": "🚀"
    },
    "btn_configs": {
       "pack": "IconsPack2",
       "index": 28,
       "alt": "📊",
       "fallback": "📊",
-      "btn_fallback": "🗃️"
+      "btn_fallback": "📊"
    },
    "btn_balance": {
       "pack": "adapted_gem_pay",
       "index": 2,
       "alt": "💰",
       "fallback": "💰",
-      "btn_fallback": "💳"
+      "btn_fallback": "💰"
    },
    "btn_account": {
       "pack": "EmojiTechPack",
@@ -417,21 +417,21 @@
       "index": 36,
       "alt": "⭐",
       "fallback": "⭐",
-      "btn_fallback": "🎁"
+      "btn_fallback": "⭐"
    },
    "btn_support": {
       "pack": "EmojiTechPack",
       "index": 19,
       "alt": "🎧",
       "fallback": "🎧",
-      "btn_fallback": "💬"
+      "btn_fallback": "🎧"
    },
    "btn_apps": {
       "pack": "IconsPack2",
       "index": 38,
       "alt": "📥",
       "fallback": "📥",
-      "btn_fallback": "📱"
+      "btn_fallback": "📥"
    },
    "btn_admin": {
       "pack": "vector_icons_by_fStikBot",

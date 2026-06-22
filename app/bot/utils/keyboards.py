@@ -68,7 +68,7 @@ class K:
         return self.btn(fa.HOME, callback_data="main_menu", icon="home")
 
     def back_to_menu(self) -> K:
-        return self.btn(fa.BACK_TO_MENU, callback_data="main_menu", icon="back")
+        return self.btn(fa.BACK_TO_MENU, callback_data="main_menu", icon="home")
 
     def nav(self, back_callback: str = "main_menu") -> K:
         """Back + home on one row."""

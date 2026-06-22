@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -12,6 +13,8 @@ logger = logging.getLogger(__name__)
 _I18N = Path(__file__).resolve().parent.parent / "i18n"
 REGISTRY_PATH = _I18N / "emoji_registry.json"
 IDS_PATH = _I18N / "emoji_ids.json"
+
+_TG_EMOJI_RE = re.compile(r"<tg-emoji[^>]*>.*?</tg-emoji>", re.DOTALL)
 
 
 def _enabled() -> bool:
@@ -97,15 +100,40 @@ def p(key: str) -> str:
     return f"{s} " if s else ""
 
 
-def button_vector_icons_enabled() -> bool:
-    """Vector icons on inline buttons (Bot API 9.4). Off by default — Unicode in label is reliable."""
-    raw = os.environ.get("USE_BUTTON_VECTOR_ICONS", "0").strip().lower()
-    return raw in {"1", "true", "yes", "on"}
+def strip_html_emoji(text: str) -> str:
+    """Remove tg-emoji HTML — invalid inside inline-keyboard button labels."""
+    return _TG_EMOJI_RE.sub("", text).strip()
+
+
+def u(key: str) -> str:
+    """Unicode emoji for buttons (never HTML)."""
+    spec = _spec(key)
+    if not spec:
+        return ""
+    if key.startswith("btn_"):
+        return str(spec.get("fallback") or spec.get("btn_fallback") or "")
+    return str(spec.get("fallback") or "")
 
 
 def btn_label(key: str | None, text: str) -> str:
-    """Return button label as-is; emoji lives in fa.py strings."""
-    return text.strip()
+    """Plain button text + Unicode emoji at end (RTL). Never emits HTML."""
+    plain = strip_html_emoji(text)
+    if not key:
+        return plain
+    emoji = u(key)
+    if not emoji:
+        return plain
+    if plain.endswith(emoji):
+        return plain
+    if plain.startswith(emoji):
+        plain = plain[len(emoji) :].strip()
+    return f"{plain} {emoji}"
+
+
+def button_vector_icons_enabled() -> bool:
+    """Vector icons on inline buttons (Bot API 9.4). Off by default."""
+    raw = os.environ.get("USE_BUTTON_VECTOR_ICONS", "0").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
 
 
 class _Emoji:
