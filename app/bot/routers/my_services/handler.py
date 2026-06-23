@@ -401,13 +401,13 @@ async def cb_delete_yes(
         return
     vpn: VPNService | None = kwargs.get("vpn_service")
     name = cfg.service_name
-    if vpn:
-        try:
-            await vpn.delete(session, cfg)
-        except XUIError:
-            await _alert(callback, fa.ERRORS["api_error"])
-            return
-    else:
-        await VPNConfig.delete(session, cfg.id)
+    if not vpn:
+        await _alert(callback, fa.ERRORS["vpn_unavailable"])
+        return
+    try:
+        await vpn.delete(session, cfg)
+    except XUIError:
+        await _alert(callback, fa.ERRORS["api_error"])
+        return
     await _alert(callback, fa.CONFIG_DELETED.format(name=name))
     await show_configs_list(callback, user, session, **kwargs)

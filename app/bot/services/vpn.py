@@ -236,7 +236,7 @@ class VPNService:
         Remove a service: disable on panel first (cuts live sessions), then delete.
         User taps delete once — bot handles both steps.
         """
-        email = config.panel_email
+        email = (config.panel_email or config.service_name).strip().lower()
         disabled = False
 
         try:
@@ -252,13 +252,7 @@ class VPNService:
             await self._signal_direct_nodes()
             await asyncio.sleep(DELETE_DISABLE_DELAY_SEC)
 
-        try:
-            await self.xui.delete_client(email)
-            logger.info("Deleted panel client: %s", email)
-        except XUINotFound:
-            logger.info("Panel client %s already deleted", email)
-        except XUIError:
-            raise
+        await self.xui.delete_client(email)
 
         await VPNConfig.delete(session, config.id)
         await self._signal_direct_nodes()

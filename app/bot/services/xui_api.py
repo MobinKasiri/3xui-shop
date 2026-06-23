@@ -650,14 +650,116 @@ class XUIApiService:
         data = await self._request("GET", f"/panel/api/inbounds/get/{inbound_id}")
         return data.get("obj") or {}
 
-    async def delete_client(self, email: str) -> None:
-        """POST /panel/api/clients/del/{email}?keepTraffic=0"""
-        await self._request(
-            "POST",
-            f"/panel/api/clients/del/{self._email_path(email)}",
-            params={"keepTraffic": 0},
+    async def client_exists(self, email: str) -> bool:
+        """True if client still appears in central API or any inbound settings."""
+        email = email.strip()
+        try:
+            await self.get_client(email)
+            return True
+        except XUINotFound:
+            pass
+        except XUIError:
+            raise
+
+        try:
+            data = await self._request("GET", "/panel/api/clients/list")
+            for item in data.get("obj") or []:
+                if isinstance(item, dict) and (item.get("email") or "").strip() == email:
+                    return True
+        except XUIError as exc:
+            logger.warning("clients/list while checking %s: %s", email, exc)
+
+        try:
+            inbounds = await self.list_inbounds()
+        except XUIError:
+            return False
+
+        for ib in inbounds:
+            try:
+                obj = await self.get_inbound(ib.id)
+            except XUIError:
+                continue
+            settings = _parse_json_field(obj.get("settings"))
+            clients = settings.get("clients") if isinstance(settings, dict) else []
+            if not isinstance(clients, list):
+                continue
+            for client in clients:
+                if isinstance(client, dict) and (client.get("email") or "").strip() == email:
+                    return True
+        return False
+
+    async def _remove_client_from_inbound(self, inbound_id: int, email: str) -> bool:
+        """Remove client from inbound settings.clients[] (orphan / legacy cleanup)."""
+        obj = await self.get_inbound(inbound_id)
+        settings = _parse_json_field(obj.get("settings"))
+        if not isinstance(settings, dict):
+            settings = {}
+        clients = settings.get("clients") or []
+        if not isinstance(clients, list):
+            return False
+        new_clients = [
+            c for c in clients
+            if not (isinstance(c, dict) and (c.get("email") or "").strip() == email)
+        ]
+        if len(new_clients) == len(clients):
+            return False
+        settings = {**settings, "clients": new_clients}
+        stream = _parse_json_field(obj.get("streamSettings"))
+        if not isinstance(stream, dict):
+            stream = {}
+        await self.update_inbound(
+            inbound_id, _inbound_update_payload(obj, settings, stream)
         )
-        logger.info(f"Client deleted: {email}")
+        return True
+
+    async def delete_client(self, email: str) -> None:
+        """
+        Delete from central clients API, detach inbounds, scrub inbound JSON.
+        Raises if the client is still visible on the panel afterward.
+        """
+        email = email.strip()
+        inbound_ids: list[int] = []
+        try:
+            record = await self.get_client(email)
+            inbound_ids = list(record.get("inboundIds") or [])
+        except XUINotFound:
+            logger.info("Client %s not in central registry — will scrub inbounds", email)
+
+        if inbound_ids:
+            try:
+                await self.detach_client(email, inbound_ids)
+            except XUIError as exc:
+                logger.warning("detach before delete %s: %s", email, exc)
+
+        try:
+            await self._request(
+                "POST",
+                f"/panel/api/clients/del/{self._email_path(email)}",
+                params={"keepTraffic": 0},
+            )
+            logger.info("Central API deleted client: %s", email)
+        except XUINotFound:
+            logger.info("Central del returned 404 for %s", email)
+        except XUIAPIError as exc:
+            logger.warning("Central del API error for %s: %s", email, exc)
+
+        scrub_ids: set[int] = set(inbound_ids)
+        try:
+            scrub_ids.update(ib.id for ib in await self.list_inbounds())
+        except XUIError as exc:
+            logger.warning("Could not list inbounds for delete scrub: %s", exc)
+
+        for ib_id in scrub_ids:
+            try:
+                if await self._remove_client_from_inbound(ib_id, email):
+                    logger.info("Scrubbed %s from inbound %s settings", email, ib_id)
+            except XUIError as exc:
+                logger.warning("Inbound scrub failed for %s on %s: %s", email, ib_id, exc)
+
+        if await self.client_exists(email):
+            raise XUIAPIError(f"Panel client {email} still exists after delete")
+
+        logger.info("Client fully removed from panel: %s", email)
 
     async def get_client_traffic(self, email: str) -> ClientTraffic:
         """GET /panel/api/clients/traffic/{email}"""
@@ -703,6 +805,8 @@ class XUIApiService:
 
     async def detach_client(self, email: str, inbound_ids: list[int]) -> None:
         """POST /panel/api/clients/{email}/detach"""
+        if not inbound_ids:
+            return
         await self._request(
             "POST",
             f"/panel/api/clients/{self._email_path(email)}/detach",
