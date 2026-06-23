@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.i18n import fa
 from app.bot.services.vpn import VPNService
 from app.bot.services.xui_api import XUIError
+from app.bot.utils.emoji import plain_alert_text
 from app.bot.utils.jalali import (
     delayed_start_days,
     is_delayed_start,
@@ -35,6 +36,11 @@ from app.db.models import User, VPNConfig
 logger = logging.getLogger(__name__)
 
 router = Router(name="my_services")
+
+
+async def _alert(callback: CallbackQuery, text: str) -> None:
+    """Popup alert — plain text only (Telegram rejects HTML in show_alert)."""
+    await callback.answer(plain_alert_text(text), show_alert=True)
 
 
 # ── list ─────────────────────────────────────────────────────────────────────
@@ -164,7 +170,7 @@ async def cb_open_config(
     cid = int(callback.data.rsplit(":", 1)[-1])
     cfg = await VPNConfig.get(session, cid)
     if not cfg or cfg.user_id != user.tg_id:
-        await callback.answer(fa.ERRORS["config_not_found"], show_alert=True)
+        await _alert(callback, fa.ERRORS["config_not_found"])
         return
     vpn: VPNService | None = kwargs.get("vpn_service")
     await _send_detail(callback, cfg, vpn, edit=True)
@@ -179,7 +185,7 @@ async def cb_status(
     cid = int(callback.data.rsplit(":", 1)[-1])
     cfg = await VPNConfig.get(session, cid)
     if not cfg or cfg.user_id != user.tg_id:
-        await callback.answer(fa.ERRORS["config_not_found"], show_alert=True)
+        await _alert(callback, fa.ERRORS["config_not_found"])
         return
     vpn: VPNService | None = kwargs.get("vpn_service")
 
@@ -233,16 +239,16 @@ async def cb_links(
     cid = int(callback.data.rsplit(":", 1)[-1])
     cfg = await VPNConfig.get(session, cid)
     if not cfg or cfg.user_id != user.tg_id:
-        await callback.answer(fa.ERRORS["config_not_found"], show_alert=True)
+        await _alert(callback, fa.ERRORS["config_not_found"])
         return
     vpn: VPNService | None = kwargs.get("vpn_service")
     if vpn is None:
-        await callback.answer(fa.ERRORS["api_error"], show_alert=True)
+        await _alert(callback, fa.ERRORS["api_error"])
         return
     try:
         all_links = await vpn.fetch_all_links(cfg)
     except XUIError:
-        await callback.answer(fa.ERRORS["api_error"], show_alert=True)
+        await _alert(callback, fa.ERRORS["api_error"])
         return
 
     if all_links:
@@ -274,7 +280,7 @@ async def cb_sub(
     cid = int(callback.data.rsplit(":", 1)[-1])
     cfg = await VPNConfig.get(session, cid)
     if not cfg or cfg.user_id != user.tg_id:
-        await callback.answer(fa.ERRORS["config_not_found"], show_alert=True)
+        await _alert(callback, fa.ERRORS["config_not_found"])
         return
     text = fa.CONFIG_GET_SUB_TEXT.format(name=cfg.service_name, url=cfg.subscription_url)
     await callback.message.edit_text(
@@ -294,21 +300,22 @@ async def cb_toggle(
     cid = int(callback.data.rsplit(":", 1)[-1])
     cfg = await VPNConfig.get(session, cid)
     if not cfg or cfg.user_id != user.tg_id:
-        await callback.answer(fa.ERRORS["config_not_found"], show_alert=True)
+        await _alert(callback, fa.ERRORS["config_not_found"])
         return
     vpn: VPNService | None = kwargs.get("vpn_service")
     if vpn is None:
-        await callback.answer(fa.ERRORS["api_error"], show_alert=True)
+        await _alert(callback, fa.ERRORS["api_error"])
         return
     new_state = not cfg.is_active
     try:
         await vpn.set_enabled(session, cfg, new_state)
     except XUIError:
-        await callback.answer(fa.ERRORS["api_error"], show_alert=True)
+        await _alert(callback, fa.ERRORS["api_error"])
         return
     cfg.is_active = new_state
-    await callback.answer(
-        fa.CONFIG_ENABLED if new_state else fa.CONFIG_DISABLED, show_alert=True
+    await _alert(
+        callback,
+        fa.CONFIG_ENABLED if new_state else fa.CONFIG_DISABLED,
     )
     await _send_detail(callback, cfg, vpn, edit=True)
 
@@ -322,20 +329,18 @@ async def cb_reset_sub(
     cid = int(callback.data.rsplit(":", 1)[-1])
     cfg = await VPNConfig.get(session, cid)
     if not cfg or cfg.user_id != user.tg_id:
-        await callback.answer(fa.ERRORS["config_not_found"], show_alert=True)
+        await _alert(callback, fa.ERRORS["config_not_found"])
         return
     vpn: VPNService | None = kwargs.get("vpn_service")
     if vpn is None:
-        await callback.answer(fa.ERRORS["api_error"], show_alert=True)
+        await _alert(callback, fa.ERRORS["api_error"])
         return
     try:
         cfg = await vpn.reset_sub(session, cfg)
     except XUIError:
-        await callback.answer(fa.ERRORS["api_error"], show_alert=True)
+        await _alert(callback, fa.ERRORS["api_error"])
         return
-    await callback.answer(
-        fa.CONFIG_RESET_SUB_DONE.format(url=cfg.subscription_url), show_alert=True
-    )
+    await _alert(callback, fa.CONFIG_RESET_SUB_DONE.format(url=cfg.subscription_url))
     await _send_detail(callback, cfg, vpn, edit=True)
 
 
@@ -348,7 +353,7 @@ async def cb_qr(
     cid = int(callback.data.rsplit(":", 1)[-1])
     cfg = await VPNConfig.get(session, cid)
     if not cfg or cfg.user_id != user.tg_id:
-        await callback.answer(fa.ERRORS["config_not_found"], show_alert=True)
+        await _alert(callback, fa.ERRORS["config_not_found"])
         return
     qr = make_qr_png(cfg.subscription_url)
     photo = BufferedInputFile(qr.getvalue(), filename="qr.png")
@@ -370,7 +375,7 @@ async def cb_delete_prompt(
     cid = int(callback.data.rsplit(":", 1)[-1])
     cfg = await VPNConfig.get(session, cid)
     if not cfg or cfg.user_id != user.tg_id:
-        await callback.answer(fa.ERRORS["config_not_found"], show_alert=True)
+        await _alert(callback, fa.ERRORS["config_not_found"])
         return
     await callback.message.edit_text(
         fa.CONFIG_DELETE_CONFIRM.format(name=cfg.service_name),
@@ -392,7 +397,7 @@ async def cb_delete_yes(
     cid = int(callback.data.rsplit(":", 1)[-1])
     cfg = await VPNConfig.get(session, cid)
     if not cfg or cfg.user_id != user.tg_id:
-        await callback.answer(fa.ERRORS["config_not_found"], show_alert=True)
+        await _alert(callback, fa.ERRORS["config_not_found"])
         return
     vpn: VPNService | None = kwargs.get("vpn_service")
     name = cfg.service_name
@@ -400,9 +405,9 @@ async def cb_delete_yes(
         try:
             await vpn.delete(session, cfg)
         except XUIError:
-            await callback.answer(fa.ERRORS["api_error"], show_alert=True)
+            await _alert(callback, fa.ERRORS["api_error"])
             return
     else:
         await VPNConfig.delete(session, cfg.id)
-    await callback.answer(fa.CONFIG_DELETED.format(name=name), show_alert=True)
+    await _alert(callback, fa.CONFIG_DELETED.format(name=name))
     await show_configs_list(callback, user, session, **kwargs)

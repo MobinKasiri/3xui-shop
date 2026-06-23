@@ -105,6 +105,15 @@ def strip_html_emoji(text: str) -> str:
     return _TG_EMOJI_RE.sub("", text).strip()
 
 
+def plain_alert_text(text: str) -> str:
+    """Telegram callback alerts are plain text only — strip HTML and custom emoji tags."""
+    import html
+
+    text = re.sub(r"<tg-emoji[^>]*>(.*?)</tg-emoji>", r"\1", text, flags=re.DOTALL)
+    text = re.sub(r"<[^>]+>", "", text)
+    return html.unescape(text).strip()
+
+
 def u(key: str) -> str:
     """Unicode emoji for buttons (never HTML)."""
     spec = _spec(key)
