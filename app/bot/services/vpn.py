@@ -248,6 +248,16 @@ class VPNService:
 
         await self.xui.delete_client(email)
 
+    async def _panel_client_absent(self, email: str) -> bool:
+        """True when the central clients API no longer has this email."""
+        try:
+            await self.xui.get_client(email)
+            return False
+        except XUINotFound:
+            return True
+        except XUIError:
+            return False
+
     async def delete(self, session: AsyncSession, config: VPNConfig) -> None:
         """
         Remove a service from 3X-UI first, then the bot database.
@@ -271,6 +281,15 @@ class VPNService:
             except XUIError as exc:
                 last_error = exc
                 logger.warning("Panel delete failed for %s (config %s): %s", email, config.id, exc)
+                if await self._panel_client_absent(email):
+                    logger.warning(
+                        "Panel client %s is gone despite delete error — removing bot config %s",
+                        email,
+                        config.id,
+                    )
+                    await VPNConfig.delete(session, config.id)
+                    await self._signal_direct_nodes()
+                    return
 
         if last_error:
             raise last_error

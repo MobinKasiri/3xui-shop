@@ -733,6 +733,23 @@ class XUIApiService:
                     return True
         return False
 
+    @staticmethod
+    def _bulk_delete_succeeded(bulk_result: dict, email: str) -> bool:
+        """True when bulkDel confirms the client was removed or was already absent."""
+        if not bulk_result:
+            return False
+        if int(bulk_result.get("deleted") or 0) > 0:
+            return True
+        for skip in bulk_result.get("skipped") or []:
+            if not isinstance(skip, dict):
+                continue
+            if not XUIClient._match_client_email(skip.get("email", ""), email):
+                continue
+            reason = (skip.get("reason") or "").lower()
+            if any(token in reason for token in ("not found", "no client", "does not exist")):
+                return True
+        return False
+
     async def _bulk_delete_clients(self, emails: list[str]) -> dict:
         """POST /panel/api/clients/bulkDel — preferred delete (no email-in-URL issues)."""
         unique = []
@@ -836,13 +853,27 @@ class XUIApiService:
             except XUIError as exc:
                 logger.warning("Inbound scrub failed for %s on %s: %s", email, ib_id, exc)
 
-        if await self.client_exists(email):
-            skipped = bulk_result.get("skipped") if bulk_result else []
-            raise XUIAPIError(
-                f"Panel client {email} still exists after delete (bulkDel skipped={skipped})"
-            )
+        # Central clients API is the source of truth for the panel UI. List/paged
+        # endpoints and inbound settings JSON can lag or keep ghost rows after bulkDel.
+        bulk_ok = self._bulk_delete_succeeded(bulk_result, email)
+        try:
+            await self.get_client(email)
+        except XUINotFound:
+            logger.info("Client fully removed from panel: %s", email)
+            return
+        except XUIError as exc:
+            if bulk_ok:
+                logger.warning(
+                    "Post-delete get_client failed for %s after bulkDel: %s — treating as deleted",
+                    email,
+                    exc,
+                )
+                return
+            raise
 
-        logger.info("Client fully removed from panel: %s", email)
+        raise XUIAPIError(
+            f"Panel client {email} still exists after delete (bulkDel={bulk_result})"
+        )
 
     async def get_client_traffic(self, email: str) -> ClientTraffic:
         """GET /panel/api/clients/traffic/{email}"""
