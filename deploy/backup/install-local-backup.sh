@@ -17,10 +17,56 @@ if [[ "$(id -u)" -ne 0 ]]; then
   exit 1
 fi
 
-echo "==> Installing packages ..."
-export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq
-apt-get install -y -qq postgresql-client gzip curl tar rsync ca-certificates
+REQUIRED_PKGS=(postgresql-client gzip curl tar rsync ca-certificates)
+
+pkg_installed() {
+  dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q 'install ok installed'
+}
+
+all_pkgs_installed() {
+  local p
+  for p in "${REQUIRED_PKGS[@]}"; do
+    pkg_installed "$p" || return 1
+  done
+}
+
+wait_for_dpkg_lock() {
+  local max_wait="${1:-300}" elapsed=0
+  while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 \
+     || fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
+    if (( elapsed == 0 )); then
+      echo "Waiting for apt/dpkg lock (often unattended-upgrades) ..."
+    fi
+    if (( elapsed >= max_wait )); then
+      echo "ERROR: dpkg lock still held after ${max_wait}s."
+      echo "Check: ps aux | grep -E 'unattended|apt|dpkg'"
+      echo "Then retry: sudo bash $0"
+      return 1
+    fi
+    sleep 5
+    elapsed=$((elapsed + 5))
+  done
+}
+
+install_packages() {
+  if all_pkgs_installed; then
+    echo "==> Required packages already installed — skipping apt"
+    return 0
+  fi
+
+  echo "==> Installing packages ..."
+  wait_for_dpkg_lock 300 || return 1
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update -qq
+  apt-get install -y -qq "${REQUIRED_PKGS[@]}"
+}
+
+install_packages || {
+  echo ""
+  echo "WARN: apt install skipped/failed — continuing with script install."
+  echo "If backup fails, wait a few minutes and run this installer again."
+  echo ""
+}
 
 mkdir -p /etc/nc-vpn /var/lib/nc-vpn-backup/export "${INSTALL_DIR}"
 chmod 700 /etc/nc-vpn
