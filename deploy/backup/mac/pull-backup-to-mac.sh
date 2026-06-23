@@ -76,7 +76,10 @@ rsync_cmd() {
 
 prune_mac_backups() {
   local keep="$1"
-  mapfile -t dirs < <(find "$LOCAL_BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d ! -name logs | sort)
+  local dirs=() d
+  while IFS= read -r d; do
+    [[ -n "$d" ]] && dirs+=("$d")
+  done < <(find "$LOCAL_BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d ! -name logs | sort)
   local n=${#dirs[@]} i
   if (( n > keep )); then
     for ((i = 0; i < n - keep; i++)); do
