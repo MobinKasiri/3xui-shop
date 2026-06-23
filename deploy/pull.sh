@@ -9,14 +9,20 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 ENV_FILE="${ENV_FILE:-${ROOT}/.env}"
-if [[ -f "$ENV_FILE" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  source "$ENV_FILE"
-  set +a
-fi
 
-DATA_DIR="${BOT_DATA_HOST:-}"
+read_env_var() {
+  local key="$1" file="$2"
+  [[ -f "$file" ]] || return 1
+  grep -E "^${key}=" "$file" 2>/dev/null | tail -1 | cut -d= -f2- \
+    | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+          -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"
+}
+
+# Do not `source` .env — values may contain spaces/Unicode (e.g. CARD_OWNER).
+DATA_DIR=""
+if [[ -f "$ENV_FILE" ]]; then
+  DATA_DIR="$(read_env_var BOT_DATA_HOST "$ENV_FILE" || true)"
+fi
 
 if [[ -n "$DATA_DIR" && -d "$DATA_DIR" ]]; then
   git pull "$@"

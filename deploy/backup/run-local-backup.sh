@@ -13,29 +13,30 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "${SCRIPT_DIR}/lib.sh"
 
-TS="$(date -u +%Y%m%dT%H%M%SZ)"
-BUNDLE="${LOCAL_EXPORT_DIR}/${TS}"
-
 main() {
   load_server_config
   require_cmd gzip pg_dump docker curl tar
 
-  log "=== NC VPN local export start ($TS) ==="
-  mkdir -p "${BUNDLE}/dumps" "${BUNDLE}/meta" "${BUNDLE}/config" "${BUNDLE}/files"
+  local ts bundle
+  ts="$(date -u +%Y%m%dT%H%M%SZ)"
+  bundle="${LOCAL_EXPORT_DIR}/${ts}"
 
-  export_system_state "${BUNDLE}/meta"
-  dump_xui_db "${BUNDLE}/dumps" "$TS"
-  dump_bot_db "${BUNDLE}/dumps" "$TS"
-  copy_config_snapshots "${BUNDLE}/config"
-  archive_backup_paths "${BUNDLE}/files"
+  log "=== NC VPN local export start ($ts) ==="
+  mkdir -p "${bundle}/dumps" "${bundle}/meta" "${bundle}/config" "${bundle}/files"
 
-  echo "$TS" >"${BUNDLE}/timestamp.txt"
-  du -sh "${BUNDLE}" | awk '{print "total_size=" $1}' >"${BUNDLE}/meta/size.txt"
+  export_system_state "${bundle}/meta"
+  dump_xui_db "${bundle}/dumps" "$ts"
+  dump_bot_db "${bundle}/dumps" "$ts"
+  copy_config_snapshots "${bundle}/config"
+  archive_backup_paths "${bundle}/files"
 
-  link_latest_export "$BUNDLE"
+  echo "$ts" >"${bundle}/timestamp.txt"
+  du -sh "${bundle}" | awk '{print "total_size=" $1}' >"${bundle}/meta/size.txt"
+
+  link_latest_export "$bundle"
   prune_local_exports
 
-  log "=== Local export OK: ${LOCAL_EXPORT_DIR}/latest ($(du -sh "${BUNDLE}" | cut -f1)) ==="
+  log "=== Local export OK: ${LOCAL_EXPORT_DIR}/latest ($(du -sh "${bundle}" | cut -f1)) ==="
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
