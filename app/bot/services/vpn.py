@@ -231,20 +231,14 @@ class VPNService:
             raise
         await VPNConfig.update(session, config.id, is_active=enabled)
 
-    async def delete(self, session: AsyncSession, config: VPNConfig) -> None:
-        """
-        Remove a service: disable on panel first (cuts live sessions), then delete.
-        User taps delete once — bot handles both steps.
-        """
-        email = (config.panel_email or config.service_name).strip().lower()
+    async def _purge_panel_client(self, email: str) -> None:
         disabled = False
-
         try:
             await self.xui.set_client_enabled(email, False)
             disabled = True
             logger.info("Disabled panel client before delete: %s", email)
         except XUINotFound:
-            logger.info("Panel client %s not found for disable (may already be removed)", email)
+            logger.info("Panel client %s not found for disable — continuing delete", email)
         except XUIError:
             raise
 
@@ -254,8 +248,33 @@ class VPNService:
 
         await self.xui.delete_client(email)
 
-        await VPNConfig.delete(session, config.id)
-        await self._signal_direct_nodes()
+    async def delete(self, session: AsyncSession, config: VPNConfig) -> None:
+        """
+        Remove a service from 3X-UI first, then the bot database.
+        Tries panel_email and service_name in case they diverged.
+        """
+        candidates: list[str] = []
+        for raw in (config.panel_email, config.service_name):
+            em = (raw or "").strip().lower()
+            if em and em not in candidates:
+                candidates.append(em)
+        if not candidates:
+            raise XUIError("Config has no panel email / service name")
+
+        last_error: XUIError | None = None
+        for email in candidates:
+            try:
+                await self._purge_panel_client(email)
+                await VPNConfig.delete(session, config.id)
+                await self._signal_direct_nodes()
+                return
+            except XUIError as exc:
+                last_error = exc
+                logger.warning("Panel delete failed for %s (config %s): %s", email, config.id, exc)
+
+        if last_error:
+            raise last_error
+        raise XUIError("Panel delete failed")
 
     async def reset_sub(self, session: AsyncSession, config: VPNConfig) -> VPNConfig:
         new_sub_id = _make_sub_id()
