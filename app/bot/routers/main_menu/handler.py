@@ -76,6 +76,19 @@ async def send_welcome(
             except Exception:
                 logger.exception("Referral handling failed on /start for user %s", user.tg_id)
 
+        try:
+            from app.bot.services.festival_promo import handle_start_festival
+
+            await handle_start_festival(
+                session,
+                user,
+                target.bot,
+                is_new_user=is_new_user,
+                config=config,
+            )
+        except Exception:
+            logger.exception("Festival promo failed on /start for user %s", user.tg_id)
+
         await answer_message(target, fa.WELCOME, reply_markup=markup)
         return
 

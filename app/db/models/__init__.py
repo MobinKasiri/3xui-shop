@@ -6,6 +6,7 @@ from .referral import Referral
 from .notification_log import NotificationLog
 from .discount_code import DiscountCode
 from .discount_usage import DiscountUsage
+from .festival_grant import FestivalGrant
 
 __all__ = [
     "Base",
@@ -16,4 +17,5 @@ __all__ = [
     "NotificationLog",
     "DiscountCode",
     "DiscountUsage",
+    "FestivalGrant",
 ]

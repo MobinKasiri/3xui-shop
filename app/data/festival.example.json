@@ -1,0 +1,15 @@
+{
+  "enabled": false,
+  "campaign_id": null,
+  "title": "جشنواره ویژه",
+  "max_users": 20,
+  "discount_percent": 50,
+  "discount_amount": null,
+  "valid_days": 14,
+  "code_prefix": "JSH",
+  "delivery_mode": "on_start",
+  "new_users_only": false,
+  "starts_at": null,
+  "ends_at": null,
+  "texts": {}
+}

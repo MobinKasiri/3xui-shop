@@ -168,14 +168,17 @@ def _service_name_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-def _discount_keyboard() -> InlineKeyboardMarkup:
-    return (
-        K()
-        .btn(fa.DISCOUNT_SKIP_BTN, callback_data="buy:discount:skip", icon="close")
-        .nav("buy:back_to_name")
-        .adjust(1, 2)
-        .as_markup()
+def _discount_keyboard(extra: InlineKeyboardMarkup | None = None) -> InlineKeyboardMarkup:
+    kb = K()
+    if extra and extra.inline_keyboard:
+        for row in extra.inline_keyboard:
+            kb.row(*row)
+    kb.btn(fa.DISCOUNT_SKIP_BTN, callback_data="buy:discount:skip", icon="close").nav(
+        "buy:back_to_name"
     )
+    if extra and extra.inline_keyboard:
+        return kb.adjust(1, 1, 2).as_markup()
+    return kb.adjust(1, 2).as_markup()
 
 
 def _method_keyboard(balance: int, required: int) -> InlineKeyboardMarkup:
@@ -328,18 +331,45 @@ async def cb_back_to_qty(callback: CallbackQuery, state: FSMContext, **kwargs) -
 # ── service name ─────────────────────────────────────────────────────────────
 
 async def _enter_discount_step(
-    target: CallbackQuery | Message, state: FSMContext, base_amount: int
+    target: CallbackQuery | Message,
+    state: FSMContext,
+    base_amount: int,
+    *,
+    session: AsyncSession | None = None,
+    user: User | None = None,
+    config=None,
 ) -> None:
     data = await state.get_data()
     text = fa.DISCOUNT_PROMPT.format(
         quantity=to_persian_digits(_purchase_quantity(data)),
         amount=format_toman(base_amount),
     )
+
+    extra_markup = None
+    if session and user and config:
+        try:
+            from app.bot.services.festival_promo import (
+                festival_discount_keyboard_markup,
+                get_active_festival_grant,
+            )
+            from app.bot.services.festival_settings import festival_settings_for_config
+
+            settings = festival_settings_for_config(config)
+            if settings.is_active():
+                grant = await get_active_festival_grant(session, user.tg_id, config)
+                if grant:
+                    hint = settings.text("purchase_hint", code=grant.code)
+                    text = f"{text}\n\n{hint}"
+                    extra_markup = festival_discount_keyboard_markup(grant)
+        except Exception:
+            logger.exception("Festival discount hint failed")
+
+    markup = _discount_keyboard(extra=extra_markup)
     if isinstance(target, CallbackQuery):
-        await target.message.edit_text(text, reply_markup=_discount_keyboard())
+        await target.message.edit_text(text, reply_markup=markup)
         await target.answer()
     else:
-        await target.answer(text, reply_markup=_discount_keyboard())
+        await target.answer(text, reply_markup=markup)
     await state.set_state(PurchaseStates.discount)
 
 
@@ -363,7 +393,10 @@ async def cb_name_random(
     qty = int(data.get("quantity", 1))
     base_amount = int(plan.get("price", 0)) * qty
     await _commit_pricing(state, service_names=names, base_amount=base_amount)
-    await _enter_discount_step(callback, state, base_amount)
+    await _enter_discount_step(
+        callback, state, base_amount,
+        session=session, user=kwargs.get("user"), config=kwargs.get("config"),
+    )
 
 
 async def _free_base_name(session: AsyncSession) -> str:
@@ -402,7 +435,10 @@ async def msg_service_name(
     plan = data.get("plan") or {}
     base_amount = int(plan.get("price", 0)) * quantity
     await _commit_pricing(state, service_names=names, base_amount=base_amount)
-    await _enter_discount_step(message, state, base_amount)
+    await _enter_discount_step(
+        message, state, base_amount,
+        session=session, user=kwargs.get("user"), config=kwargs.get("config"),
+    )
 
 
 @router.callback_query(F.data == "buy:back_to_name")
@@ -430,6 +466,44 @@ async def cb_discount_skip(
     session: AsyncSession,
     **kwargs,
 ) -> None:
+    await _go_to_payment_method(callback, state, user, session, **kwargs)
+
+
+@router.callback_query(PurchaseStates.discount, F.data == "buy:discount:festival")
+async def cb_discount_festival(
+    callback: CallbackQuery,
+    state: FSMContext,
+    user: User,
+    session: AsyncSession,
+    **kwargs,
+) -> None:
+    config = kwargs.get("config")
+    from app.bot.services.festival_promo import get_active_festival_grant
+
+    grant = await get_active_festival_grant(session, user.tg_id, config)
+    if not grant:
+        await callback.answer("کد جشنواره یافت نشد یا منقضی شده.", show_alert=True)
+        return
+
+    data = await state.get_data()
+    base_amount = int(data.get("base_amount", 0))
+    result = await validate_and_apply(session, grant.code, user.tg_id, base_amount)
+    if result.error:
+        await callback.answer(fa.ERRORS[result.error], show_alert=True)
+        return
+
+    await state.update_data(
+        discount_code=result.code.code if result.code else None,
+        discount_id=result.code.id if result.code else None,
+        discount_amount=result.discount_amount,
+        final_amount=result.final_amount,
+    )
+    await callback.message.answer(
+        fa.DISCOUNT_APPLIED.format(
+            discount=format_toman(result.discount_amount),
+            new_amount=format_toman(result.final_amount),
+        )
+    )
     await _go_to_payment_method(callback, state, user, session, **kwargs)
 
 
@@ -497,10 +571,15 @@ async def _go_to_payment_method(
 
 
 @router.callback_query(F.data == "buy:back_to_discount")
-async def cb_back_to_discount(callback: CallbackQuery, state: FSMContext, **kwargs) -> None:
+async def cb_back_to_discount(
+    callback: CallbackQuery, state: FSMContext, session: AsyncSession, **kwargs
+) -> None:
     data = await state.get_data()
     base_amount = int(data.get("base_amount", 0))
-    await _enter_discount_step(callback, state, base_amount)
+    await _enter_discount_step(
+        callback, state, base_amount,
+        session=session, user=kwargs.get("user"), config=kwargs.get("config"),
+    )
 
 
 # ── payment: wallet ─────────────────────────────────────────────────────────
