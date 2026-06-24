@@ -79,17 +79,18 @@ echo
 wait_for_bot
 
 echo
-echo "==> Repair-bot health (failover when main bot is down)"
+echo "==> Repair gateway health (webhook entry — all Telegram traffic)"
 if docker exec nexoranode-repair-bot python -c \
   "import urllib.request; r=urllib.request.urlopen('http://127.0.0.1:8091/health', timeout=3); exit(0 if r.status==200 else 1)" \
   2>/dev/null; then
   echo "OK"
 else
-  echo "WARN: repair-bot not healthy — users may get silence when main bot restarts"
-  echo "  cd $ROOT/deploy && $COMPOSE up -d repair-bot"
+  echo "FAIL: repair gateway not healthy — users will get no response"
+  echo "  cd $ROOT/deploy && $COMPOSE up -d --build repair-bot nginx"
 fi
 
 echo
+echo "==> Repair gateway → main bot"
 if docker exec nexoranode-nginx wget -qO- http://bot:8090/health 2>/dev/null | grep -q OK; then
   echo "OK"
 else

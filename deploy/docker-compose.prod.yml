@@ -57,6 +57,7 @@ services:
     env_file: ../.env
     environment:
       REPAIR_PORT: "8091"
+      MAIN_BOT_WEBHOOK_URL: "http://bot:8090/webhook"
     stop_signal: SIGINT
     restart: unless-stopped
     command: poetry run python /app/repair/__main__.py
