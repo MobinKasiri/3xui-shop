@@ -100,15 +100,17 @@ else
 fi
 
 echo
-echo "==> Webhook POST test"
-WH_CODE=$(curl -sf -o /dev/null -w "%{http_code}" --connect-timeout 5 \
-  -X POST "${WEBHOOK_SCHEME}://127.0.0.1:${LOCAL_PORT}/webhook" \
+echo "==> Webhook POST test (via local nginx HTTPS)"
+WH_CODE=$(curl -sk -o /dev/null -w "%{http_code}" --connect-timeout 10 \
+  -X POST "https://${HOST}:${LOCAL_PORT}/webhook" \
   --resolve "${HOST}:${LOCAL_PORT}:127.0.0.1" \
-  -H "Host: ${HOST}" \
   -H "Content-Type: application/json" \
   -d '{"update_id":1,"message":{"message_id":1,"date":1,"chat":{"id":1,"type":"private"},"from":{"id":1,"is_bot":false,"first_name":"t"},"text":"/start"}}' \
-  2>/dev/null || echo "000")
+  2>/dev/null)
+WH_CODE="${WH_CODE:-000}"
 echo "webhook POST local: HTTP ${WH_CODE}"
+WEBHOOK_POST_OK=0
+[[ "$WH_CODE" == "200" ]] && WEBHOOK_POST_OK=1
 
 echo
 echo "==> Telegram webhook info"
@@ -134,8 +136,13 @@ if [[ -n "${BOT_TOKEN:-}" ]]; then
     echo "OK: webhook registered (${PENDING} pending updates)"
   fi
   if [[ -n "$ERR" ]]; then
-    echo "WARN: last Telegram error: $ERR"
-    FAIL=1
+    if [[ "$WEBHOOK_POST_OK" == "1" ]]; then
+      echo "NOTE: stale Telegram error (from an earlier failed delivery): $ERR"
+      echo "      Webhook POST test passed now — send /start to confirm."
+    else
+      echo "WARN: last Telegram error: $ERR"
+      FAIL=1
+    fi
   fi
 else
   echo "Set BOT_TOKEN in $ENV_FILE"

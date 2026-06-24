@@ -4,7 +4,6 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="${ENV_FILE:-$ROOT/.env}"
-COMPOSE="docker compose -f ${ROOT}/deploy/docker-compose.prod.yml --env-file ${ENV_FILE}"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Missing $ENV_FILE"
@@ -18,14 +17,14 @@ BOT_DOMAIN="${BOT_DOMAIN:-bot.nexoranode.xyz:8443}"
 BOT_USE_HTTPS="${BOT_USE_HTTPS:-true}"
 DOMAIN="${BOT_DOMAIN#https://}"
 DOMAIN="${DOMAIN#http://}"
-SCHEME="https"
+
 if [[ "$BOT_USE_HTTPS" != "true" ]]; then
   echo "ERROR: Telegram requires HTTPS for webhooks. Set BOT_USE_HTTPS=true and install SSL certs."
   echo "Run: bash ${ROOT}/deploy/setup-ssl.sh"
   exit 1
 fi
 
-WEBHOOK_URL="${SCHEME}://${DOMAIN}/webhook"
+WEBHOOK_URL="https://${DOMAIN}/webhook"
 
 if [[ -z "${BOT_TOKEN:-}" ]]; then
   echo "BOT_TOKEN not set in $ENV_FILE"
@@ -40,8 +39,7 @@ OK=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get(
 if [[ "$OK" != "True" ]]; then
   echo ""
   echo "FAIL: webhook not set. Ensure HTTPS works:"
-  echo "  curl -k https://127.0.0.1:8443/health"
-  echo "If that fails: bash ${ROOT}/deploy/setup-ssl.sh"
+  echo "  bash ${ROOT}/deploy/verify-webhook.sh"
   exit 1
 fi
 
@@ -50,5 +48,6 @@ echo "==> Webhook info"
 curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo" | python3 -m json.tool
 
 echo ""
-echo "==> Recreate bot so startup logs match"
-${COMPOSE} up -d --force-recreate bot
+echo "Done. No bot restart needed — webhook is registered via Telegram API."
+echo "If you changed BOT_DOMAIN or SSL certs, restart bot separately:"
+echo "  cd ${ROOT}/deploy && docker compose -f docker-compose.prod.yml --env-file ../.env restart bot"
