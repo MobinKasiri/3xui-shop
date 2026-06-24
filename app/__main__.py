@@ -106,6 +106,14 @@ async def on_startup(bot: Bot, config: Config, db: Database, **kwargs) -> None:
             await bot.set_webhook(webhook_url)
             info = await bot.get_webhook_info()
             logger.info(f"Webhook set: {info.url}")
+            if info.last_error_message:
+                logger.error(
+                    "Telegram webhook delivery error: %s (date=%s). "
+                    "If using HTTPS on 8443, ensure deploy/nginx/certs/ exist; "
+                    "otherwise set BOT_USE_HTTPS=false and BOT_DOMAIN=bot.nexoranode.xyz",
+                    info.last_error_message,
+                    info.last_error_date,
+                )
         except Exception as e:
             logger.error(
                 f"Failed to set webhook ({webhook_url}): {e}. "
