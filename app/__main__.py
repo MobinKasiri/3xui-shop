@@ -215,7 +215,13 @@ async def main() -> None:
             **workflow_data,
         )
     else:
-        app = web.Application()
+        @web.middleware
+        async def log_webhook(request: web.Request, handler):
+            if request.path == TELEGRAM_WEBHOOK:
+                logger.info("Webhook %s from %s", request.method, request.remote)
+            return await handler(request)
+
+        app = web.Application(middlewares=[log_webhook])
         app["config"] = config
 
         async def health_handler(_request: web.Request) -> web.Response:

@@ -32,6 +32,16 @@ services:
         aliases:
           - bot
           - nexoranode-bot
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; r=urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=3); exit(0 if r.status==200 else 1)\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
     logging:
       driver: json-file
       options:
@@ -97,7 +107,8 @@ services:
       - certbot_www:/var/www/certbot:ro
     entrypoint: ["/bin/sh", "/docker-entrypoint.sh"]
     depends_on:
-      - bot
+      bot:
+        condition: service_healthy
     networks:
       - nexora_net
     logging:

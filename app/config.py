@@ -216,10 +216,12 @@ def load_config() -> Config:
     bot_port = _int_env(env, "BOT_PORT", default=DEFAULT_BOT_PORT)
     if bot_port in (443, 8443, 80):
         logger.warning(
-            "BOT_PORT=%s looks like a public nginx port. "
-            "Set BOT_PORT=8090 (internal). Use NGINX_HTTPS_PORT for 8443.",
+            "BOT_PORT=%s looks like a public nginx port — using internal port %s instead. "
+            "Use NGINX_HTTPS_PORT for 8443.",
             bot_port,
+            DEFAULT_BOT_PORT,
         )
+        bot_port = DEFAULT_BOT_PORT
 
     support_username = env.str("SUPPORT_USERNAME", default="ncvpn_support").lstrip("@")
     bot_username = env.str("BOT_USERNAME", default="nc_vpn_bot").lstrip("@")
