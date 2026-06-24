@@ -105,6 +105,11 @@ def strip_html_emoji(text: str) -> str:
     return _TG_EMOJI_RE.sub("", text).strip()
 
 
+def plain_share_text(text: str) -> str:
+    """Plain text for t.me/share/url — Telegram shows HTML tags literally there."""
+    return plain_alert_text(text)
+
+
 def plain_alert_text(text: str) -> str:
     """Telegram callback alerts are plain text only — strip HTML and custom emoji tags."""
     import html

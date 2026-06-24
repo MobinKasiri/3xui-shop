@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
 from app.bot.services.referral_settings import referral_settings_for_config
+from app.bot.utils.emoji import plain_share_text
 from app.bot.utils.persian import format_toman, to_persian_digits
 from app.db.models import Referral, User
 
@@ -88,7 +89,7 @@ async def show_referral_landing(
             ref_link=ref_link,
         )
 
-    markup = _referral_keyboard(ref_link, settings.text("share_dialog"))
+    markup = _referral_keyboard(ref_link, plain_share_text(settings.text("share_dialog")))
     data_dir = _data_dir(config)
     landing_image = resolve_referral_image(
         settings.image_name("landing"),
