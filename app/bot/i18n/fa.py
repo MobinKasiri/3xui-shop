@@ -251,15 +251,20 @@ RECEIPT_PROMPT = f"{p('camera')}لطفاً تصویر رسید پرداخت را
 
 # ─── Buy: success ────────────────────────────────────────────────────────────
 
-PURCHASE_SUCCESS_ONE = (
+SERVICE_ACTIVATED_CAPTION = (
     f"{p('party')}<b>سرویس شما فعال شد!</b>\n\n"
-    f"{p('tag')}نام سرویس: <b>{{name}}</b>\n"
-    f"{p('package')}پلن: {{plan_name}} — {{gb}} گیگ | {{days}} روز\n"
-    f"{p('clock')}وضعیت: {{expiry}}\n\n"
-    f"{p('link')}<b>لینک اشتراک (همه لوکیشن‌ها):</b>\n"
+    "━━━━━━━━━━━━━━━━\n"
+    f"{p('tag')}<b>نام سرویس:</b> <code>{{name}}</code>\n"
+    f"{p('package')}<b>پلن:</b> {{plan_name}} — {{gb}} گیگ | {{days}} روز\n"
+    f"{p('clock')}<b>وضعیت:</b> {{expiry}}\n"
+    "━━━━━━━━━━━━━━━━\n\n"
+    f"{p('phone')}QR کد را اسکن کنید یا لینک را کپی کنید:\n"
     "<code>{sub_url}</code>\n\n"
-    f"{p('info')}لینک را در برنامه وارد کنید تا همه لوکیشن‌ها و سرورها به طور خودکار اضافه شوند."
+    f"{p('info')}لینک را در برنامه VPN وارد کنید تا همه لوکیشن‌ها و سرورها خودکار اضافه شوند."
 )
+SERVICE_ACTIVATED_COPY_BTN = "کپی لینک اشتراک"
+SERVICE_ACTIVATED_OPEN_BTN = "باز کردن لینک"
+PURCHASE_SUCCESS_ONE = SERVICE_ACTIVATED_CAPTION
 PURCHASE_SUCCESS_BULK = (
     f"{p('party')}<b>{{n}} سرویس با موفقیت ایجاد شد!</b>\n\n"
     "{lines}\n\n"

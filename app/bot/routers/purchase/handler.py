@@ -862,7 +862,7 @@ async def _create_configs_for_user(
     )
 
 
-def _success_keyboard() -> InlineKeyboardMarkup:
+def _bulk_success_keyboard() -> InlineKeyboardMarkup:
     return (
         K()
         .btn(fa.MAIN_BTN_CONFIGS, callback_data="menu:configs", icon="btn_configs")
@@ -872,29 +872,30 @@ def _success_keyboard() -> InlineKeyboardMarkup:
     )
 
 
+def _expiry_text_for_config(cfg) -> str:
+    if cfg.expiry_date is None:
+        return fa.DELAYED_START_FMT.format(n=to_persian_digits(cfg.plan_days))
+    from app.bot.utils.jalali import to_jalali
+
+    return to_jalali(cfg.expiry_date)
+
+
 async def _send_purchase_success(message: Message, results, plan: dict) -> None:
-    from app.bot.utils.jalali import is_delayed_start
+    from app.bot.utils.service_activation import send_service_activated_reply
 
     plan_name = plan.get("tier_name", "VIP")
 
     if len(results) == 1:
-        r = results[0]
-        cfg = r.config
-        if cfg.expiry_date is None:
-            expiry_text = fa.DELAYED_START_FMT.format(n=to_persian_digits(cfg.plan_days))
-        else:
-            from app.bot.utils.jalali import to_jalali
-            expiry_text = to_jalali(cfg.expiry_date)
-
-        text = fa.PURCHASE_SUCCESS_ONE.format(
+        cfg = results[0].config
+        await send_service_activated_reply(
+            message,
             name=cfg.service_name,
             plan_name=plan_name,
-            gb=to_persian_digits(cfg.plan_gb),
-            days=to_persian_digits(cfg.plan_days),
-            expiry=expiry_text,
+            gb=cfg.plan_gb,
+            days=cfg.plan_days,
+            expiry=_expiry_text_for_config(cfg),
             sub_url=cfg.subscription_url,
         )
-        await message.answer(text, reply_markup=_success_keyboard(), disable_web_page_preview=True)
         return
 
     lines = [
@@ -905,7 +906,11 @@ async def _send_purchase_success(message: Message, results, plan: dict) -> None:
         n=to_persian_digits(len(results)),
         lines="\n".join(lines),
     )
-    await message.answer(text, reply_markup=_success_keyboard(), disable_web_page_preview=True)
+    await message.answer(
+        text,
+        reply_markup=_bulk_success_keyboard(),
+        disable_web_page_preview=True,
+    )
 
 
 async def _credit_referrer(
@@ -1015,32 +1020,31 @@ async def cb_admin_approve(
 
 
 async def _send_purchase_success_to_user(bot, user_id: int, results, plan: dict) -> None:
-    from app.bot.utils.jalali import to_jalali
+    from app.bot.utils.service_activation import send_service_activated
 
     plan_name = plan.get("tier_name", "VIP")
     if len(results) == 1:
         cfg = results[0].config
-        if cfg.expiry_date is None:
-            expiry_text = fa.DELAYED_START_FMT.format(n=to_persian_digits(cfg.plan_days))
-        else:
-            expiry_text = to_jalali(cfg.expiry_date)
-        text = fa.PURCHASE_SUCCESS_ONE.format(
+        await send_service_activated(
+            bot,
+            user_id,
             name=cfg.service_name,
             plan_name=plan_name,
-            gb=to_persian_digits(cfg.plan_gb),
-            days=to_persian_digits(cfg.plan_days),
-            expiry=expiry_text,
+            gb=cfg.plan_gb,
+            days=cfg.plan_days,
+            expiry=_expiry_text_for_config(cfg),
             sub_url=cfg.subscription_url,
         )
-    else:
-        lines = [
-            fa.PURCHASE_LINE.format(name=r.config.service_name, sub_url=r.config.subscription_url)
-            for r in results
-        ]
-        text = fa.PURCHASE_SUCCESS_BULK.format(
-            n=to_persian_digits(len(results)),
-            lines="\n".join(lines),
-        )
+        return
+
+    lines = [
+        fa.PURCHASE_LINE.format(name=r.config.service_name, sub_url=r.config.subscription_url)
+        for r in results
+    ]
+    text = fa.PURCHASE_SUCCESS_BULK.format(
+        n=to_persian_digits(len(results)),
+        lines="\n".join(lines),
+    )
     await bot.send_message(user_id, text, parse_mode="HTML", disable_web_page_preview=True)
 
 
