@@ -21,7 +21,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
 from app.bot.services.vpn import VPNService
-from app.bot.utils.sub_url import is_clash_subscription_url
 from app.bot.services.xui_api import XUIError
 from app.bot.utils.emoji import plain_alert_text
 from app.bot.utils.jalali import (
@@ -86,7 +85,7 @@ async def show_configs_list(
 
 # ── detail ───────────────────────────────────────────────────────────────────
 
-def _detail_keyboard(config_id: int, is_active: bool, sub_url: str = "") -> InlineKeyboardMarkup:
+def _detail_keyboard(config_id: int, is_active: bool) -> InlineKeyboardMarkup:
     cid = config_id
     kb = K()
     kb.btn(fa.CONFIG_BTN_USAGE, callback_data=f"cfg:status:{cid}", icon="chart")
@@ -96,15 +95,10 @@ def _detail_keyboard(config_id: int, is_active: bool, sub_url: str = "") -> Inli
     kb.btn(fa.CONFIG_BTN_GET_SUB, callback_data=f"cfg:sub:{cid}", icon="phone")
     toggle_text = fa.CONFIG_BTN_DISABLE if is_active else fa.CONFIG_BTN_ENABLE
     kb.btn(toggle_text, callback_data=f"cfg:toggle:{cid}", icon="ban" if is_active else "play")
-    if sub_url and not is_clash_subscription_url(sub_url):
-        kb.success(
-            fa.CONFIG_BTN_CLASH_SUB, callback_data=f"cfg:clashsub:{cid}", icon="globe"
-        )
     kb.btn(fa.CONFIG_BTN_RESET_SUB, callback_data=f"cfg:resetsub:{cid}", icon="refresh")
     kb.btn(fa.CONFIG_BTN_QR, callback_data=f"cfg:qr:{cid}", icon="phone")
     kb.danger(fa.CONFIG_BTN_DELETE, callback_data=f"cfg:delete:{cid}", icon="trash")
-    extra = 1 if sub_url and not is_clash_subscription_url(sub_url) else 0
-    return kb.nav("menu:configs").adjust(1, 1, 1, 1, 1, 1 + extra, 1, 2).as_markup()
+    return kb.nav("menu:configs").adjust(1, 1, 1, 1, 1, 1, 1, 2).as_markup()
 
 
 def _expiry_text(cfg: VPNConfig, panel_expiry_ms: int | None) -> str:
@@ -156,7 +150,7 @@ async def _send_detail(
     edit: bool = True,
 ) -> None:
     text, _, _, _ = await _detail_text(vpn, cfg)
-    markup = _detail_keyboard(cfg.id, cfg.is_active, cfg.subscription_url)
+    markup = _detail_keyboard(cfg.id, cfg.is_active)
     msg = target.message if isinstance(target, CallbackQuery) else target
     try:
         if edit:
@@ -347,24 +341,6 @@ async def cb_reset_sub(
         await _alert(callback, fa.ERRORS["api_error"])
         return
     await _alert(callback, fa.CONFIG_RESET_SUB_DONE.format(url=cfg.subscription_url))
-    await _send_detail(callback, cfg, vpn, edit=True)
-
-
-@router.callback_query(F.data.startswith("cfg:clashsub:"))
-async def cb_clash_sub(
-    callback: CallbackQuery, user: User, session: AsyncSession, **kwargs
-) -> None:
-    cid = int(callback.data.rsplit(":", 1)[-1])
-    cfg = await VPNConfig.get(session, cid)
-    if not cfg or cfg.user_id != user.tg_id:
-        await _alert(callback, fa.ERRORS["config_not_found"])
-        return
-    vpn: VPNService | None = kwargs.get("vpn_service")
-    if vpn is None:
-        await _alert(callback, fa.ERRORS["api_error"])
-        return
-    cfg = await vpn.upgrade_to_clash_sub(session, cfg)
-    await _alert(callback, fa.CONFIG_CLASH_SUB_DONE.format(url=cfg.subscription_url))
     await _send_detail(callback, cfg, vpn, edit=True)
 
 

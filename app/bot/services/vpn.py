@@ -30,7 +30,7 @@ from app.bot.utils.jalali import (
     start_after_first_use_ms,
 )
 from app.bot.utils.service_name import panel_email
-from app.bot.utils.sub_url import is_clash_subscription_url, resolve_clash_sub_base
+from app.bot.utils.sub_url import resolve_clash_sub_base
 from app.db.models import VPNConfig
 
 logger = logging.getLogger(__name__)
@@ -105,17 +105,6 @@ class VPNService:
 
     def legacy_sub_url(self, sub_id: str) -> str:
         return self.sub_base_url + sub_id
-
-    async def upgrade_to_clash_sub(
-        self, session: AsyncSession, config: VPNConfig
-    ) -> VPNConfig:
-        """Point stored subscription URL at /clash/ (same sub id — Iran bypass rules)."""
-        if is_clash_subscription_url(config.subscription_url):
-            return config
-        new_url = self.sub_url(config.subscription_id, use_clash=True)
-        await VPNConfig.update(session, config.id, subscription_url=new_url)
-        config.subscription_url = new_url
-        return config
 
     # ── single-create ────────────────────────────────────────────────────────
 
