@@ -27,7 +27,12 @@ _NOT_PARTICIPANT_HINTS = (
     "not a member of",
     "participant_id_invalid",
 )
+_INACCESSIBLE_HINTS = (
+    "member list is inaccessible",
+    "chat_admin_required",
+)
 _resolved_chat_ids: dict[str, int] = {}
+_bot_gate_capable: bool = False
 
 
 class VerifyResult(Enum):
@@ -47,6 +52,11 @@ class RequiredChannel:
 class ChannelAudit:
     channel: RequiredChannel
     result: VerifyResult
+
+
+def bot_gate_capable() -> bool:
+    """True when the bot is channel admin and can call getChatMember."""
+    return _bot_gate_capable
 
 
 def parse_required_channels(raw: str) -> tuple[RequiredChannel, ...]:
@@ -109,6 +119,8 @@ def _is_joined_member(member: object) -> bool:
 
 def _bad_request_means_not_joined(exc: TelegramBadRequest) -> bool:
     msg = str(exc).lower()
+    if any(hint in msg for hint in _INACCESSIBLE_HINTS):
+        return False
     return any(hint in msg for hint in _NOT_PARTICIPANT_HINTS)
 
 
@@ -131,6 +143,66 @@ async def _resolve_chat_id(bot: Bot, channel: RequiredChannel) -> int | str:
     return chat.id
 
 
+async def _bot_can_check_channel(bot: Bot, channel: RequiredChannel) -> bool:
+    """Return True when getChatMember works for this channel (bot is admin)."""
+    me = await bot.get_me()
+    chat_ref = await _resolve_chat_id(bot, channel)
+    try:
+        bot_member = await bot.get_chat_member(chat_ref, me.id)
+    except (TelegramBadRequest, TelegramForbiddenError) as exc:
+        logger.error(
+            "Channel gate CANNOT verify %s (%s): %s — "
+            "add @%s as channel admin.",
+            channel.label,
+            channel.chat_id,
+            exc,
+            me.username,
+        )
+        return False
+
+    if not _is_joined_member(bot_member):
+        logger.error(
+            "Channel gate: bot @%s is not admin in %s (%s).",
+            me.username,
+            channel.label,
+            channel.chat_id,
+        )
+        return False
+
+    logger.info(
+        "Channel gate ready: %s (%s → %s)",
+        channel.label,
+        channel.chat_id,
+        chat_ref,
+    )
+    return True
+
+
+async def refresh_bot_gate_capability(
+    bot: Bot, channels: tuple[RequiredChannel, ...]
+) -> bool:
+    """Re-check whether the bot can verify membership in every required channel."""
+    global _bot_gate_capable
+
+    if not channels:
+        _bot_gate_capable = False
+        return False
+
+    capable = True
+    for channel in channels:
+        if not await _bot_can_check_channel(bot, channel):
+            capable = False
+    _bot_gate_capable = capable
+    return capable
+
+
+async def verify_gate_channels_at_startup(
+    bot: Bot, channels: tuple[RequiredChannel, ...]
+) -> None:
+    """Log whether the bot can resolve each channel and read membership."""
+    await refresh_bot_gate_capability(bot, channels)
+
+
 async def audit_channels(
     bot: Bot, user_id: int, channels: tuple[RequiredChannel, ...]
 ) -> list[ChannelAudit]:
@@ -149,8 +221,7 @@ async def audit_channels(
                 result = VerifyResult.NOT_JOINED
             else:
                 logger.warning(
-                    "Cannot verify %s (chat %s) for user %s: %s — "
-                    "add bot as channel admin.",
+                    "Cannot verify %s (chat %s) for user %s: %s",
                     channel.chat_id,
                     chat_ref,
                     user_id,
@@ -159,8 +230,7 @@ async def audit_channels(
                 result = VerifyResult.UNVERIFIABLE
         except TelegramForbiddenError as exc:
             logger.warning(
-                "Forbidden verifying %s (chat %s) for user %s: %s — "
-                "add bot as channel admin.",
+                "Forbidden verifying %s (chat %s) for user %s: %s",
                 channel.chat_id,
                 chat_ref,
                 user_id,
@@ -179,41 +249,18 @@ async def audit_channels(
     return audits
 
 
-async def verify_gate_channels_at_startup(
-    bot: Bot, channels: tuple[RequiredChannel, ...]
-) -> None:
-    """Log whether the bot can resolve each channel and read membership."""
-    if not channels:
-        return
+async def audit_channels_live(
+    bot: Bot, user_id: int, channels: tuple[RequiredChannel, ...]
+) -> list[ChannelAudit]:
+    """Verify membership; refresh bot capability first when checks were failing."""
+    audits = await audit_channels(bot, user_id, channels)
+    if is_membership_confirmed(audits):
+        return audits
 
-    me = await bot.get_me()
-    for channel in channels:
-        chat_ref = await _resolve_chat_id(bot, channel)
-        try:
-            bot_member = await bot.get_chat_member(chat_ref, me.id)
-            if not _is_joined_member(bot_member):
-                logger.error(
-                    "Channel gate: bot @%s is not in %s (%s) — add it as admin.",
-                    me.username,
-                    channel.label,
-                    channel.chat_id,
-                )
-                continue
-            logger.info(
-                "Channel gate ready: %s (%s → %s)",
-                channel.label,
-                channel.chat_id,
-                chat_ref,
-            )
-        except (TelegramBadRequest, TelegramForbiddenError) as exc:
-            logger.error(
-                "Channel gate CANNOT verify %s (%s): %s — "
-                "add @%s as channel admin.",
-                channel.label,
-                channel.chat_id,
-                exc,
-                me.username,
-            )
+    if any(item.result == VerifyResult.UNVERIFIABLE for item in audits):
+        if await refresh_bot_gate_capability(bot, channels):
+            return await audit_channels(bot, user_id, channels)
+    return audits
 
 
 def missing_joined_channels(audits: list[ChannelAudit]) -> list[RequiredChannel]:
@@ -234,17 +281,26 @@ async def should_block_for_channels(
     bot: Bot,
     user_id: int,
     channels: tuple[RequiredChannel, ...],
+    *,
+    channel_gate_passed: bool = False,
 ) -> tuple[bool, list[RequiredChannel]]:
-    """Return (show_gate, missing_verified_channels).
-
-    Always verifies live membership — ignores any stored gate flag.
-    Users pass only when the bot confirms JOINED on every required channel.
-    """
+    """Return (show_gate, missing_verified_channels)."""
     if not channels:
         return False, []
 
-    audits = await audit_channels(bot, user_id, channels)
+    audits = await audit_channels_live(bot, user_id, channels)
     if is_membership_confirmed(audits):
         return False, []
 
-    return True, missing_joined_channels(audits)
+    missing = missing_joined_channels(audits)
+    if missing:
+        return True, missing
+
+    if not bot_gate_capable() and channel_gate_passed:
+        logger.debug(
+            "Channel gate: trusting stored pass for user %s (bot cannot verify)",
+            user_id,
+        )
+        return False, []
+
+    return True, []

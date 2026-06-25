@@ -53,6 +53,7 @@ class ChannelGateMiddleware(BaseMiddleware):
             bot,
             user.tg_id,
             config.bot.gate_channels,
+            channel_gate_passed=user.channel_gate_passed,
         )
 
         if not block:
@@ -61,7 +62,7 @@ class ChannelGateMiddleware(BaseMiddleware):
                 user.channel_gate_passed = True
             return await handler(event, data)
 
-        if session is not None and user.channel_gate_passed:
+        if session is not None and user.channel_gate_passed and missing:
             await User.update(session, user.tg_id, channel_gate_passed=False)
             user.channel_gate_passed = False
 
