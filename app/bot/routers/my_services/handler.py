@@ -28,6 +28,7 @@ from app.bot.utils.jalali import (
     is_delayed_start,
     to_jalali,
 )
+from app.bot.utils.messaging import edit_or_answer_callback
 from app.bot.utils.persian import format_toman, to_persian_digits
 from app.bot.utils.progress import format_gb, traffic_bar
 from app.bot.utils.qr import make_qr_png
@@ -68,7 +69,9 @@ async def show_configs_list(
     )
     if not configs:
         if isinstance(target, CallbackQuery):
-            await target.message.edit_text(fa.CONFIGS_LIST_EMPTY, reply_markup=empty_markup)
+            await edit_or_answer_callback(
+                target, fa.CONFIGS_LIST_EMPTY, reply_markup=empty_markup
+            )
             await target.answer()
         else:
             await target.answer(fa.CONFIGS_LIST_EMPTY, reply_markup=empty_markup)
@@ -77,7 +80,7 @@ async def show_configs_list(
     text = fa.CONFIGS_LIST_HEADER.format(count=to_persian_digits(len(configs)))
     markup = _list_keyboard(configs)
     if isinstance(target, CallbackQuery):
-        await target.message.edit_text(text, reply_markup=markup)
+        await edit_or_answer_callback(target, text, reply_markup=markup)
         await target.answer()
     else:
         await target.answer(text, reply_markup=markup)

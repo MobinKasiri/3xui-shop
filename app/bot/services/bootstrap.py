@@ -41,7 +41,13 @@ async def bootstrap_inbounds(config: Config) -> bool:
                 "NODE_SYNC_ENABLED=true — bot will SSH to direct nodes (usually blocked). "
                 "Set NODE_SYNC_ENABLED=false; nodes use pull sync instead."
             )
-        await xui_service.ensure_clean_subscription_names()
+        from app.bot.utils.sub_url import resolve_clash_sub_base
+
+        await xui_service.ensure_subscription_settings(
+            clash_base_url=resolve_clash_sub_base(
+                config.xui.SUB_BASE_URL, config.xui.SUB_CLASH_BASE_URL
+            ),
+        )
         return True
     except Exception as e:
         logger.warning(

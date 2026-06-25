@@ -42,6 +42,10 @@ async def edit_or_answer_message(
         if fallback_answer is not None:
             await answer_message(fallback_answer, text, **kwargs)
         return
+    # Photo/document messages cannot be edited as text — send a new message instead.
+    if message.photo or message.document or message.video:
+        await answer_message(message, text, **kwargs)
+        return
     try:
         await message.edit_text(text, **kwargs)
     except TelegramBadRequest:

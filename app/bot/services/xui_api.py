@@ -413,7 +413,9 @@ class XUIApiService:
         )
         return data
 
-    async def ensure_clean_subscription_names(self) -> None:
+    async def ensure_subscription_settings(
+        self, *, clash_base_url: str = ""
+    ) -> None:
         """Subscription panel settings: clean names + enable Clash endpoint."""
         try:
             data = await self._request("POST", "/panel/api/setting/all")
@@ -453,15 +455,33 @@ class XUIApiService:
         if not rules:
             settings["subClashRules"] = DEFAULT_CLASH_RULES
             changed = True
+        clash_uri = (clash_base_url or settings.get("subClashURI") or "").strip()
+        if clash_base_url:
+            clash_uri = clash_base_url.rstrip("/") + "/"
+        if clash_uri and settings.get("subClashURI") != clash_uri:
+            settings["subClashURI"] = clash_uri
+            changed = True
         if changed:
             try:
                 await self._request("POST", "/panel/api/setting/update", json=settings)
                 logger.info(
-                    "Panel subscription: clean names + Clash enabled at %s",
+                    "Panel subscription: Clash enabled path=%s uri=%s",
                     clash_path,
+                    settings.get("subClashURI", ""),
                 )
             except XUIError as exc:
                 logger.warning("Could not update panel subscription settings: %s", exc)
+        else:
+            logger.info(
+                "Panel subscription OK — clash=%s path=%s uri=%s",
+                settings.get("subClashEnable"),
+                settings.get("subClashPath"),
+                settings.get("subClashURI") or "(empty)",
+            )
+
+    async def ensure_clean_subscription_names(self) -> None:
+        """Backward-compatible alias."""
+        await self.ensure_subscription_settings()
 
     async def get_inbound_vless_clients(self, inbound_id: int) -> list[dict]:
         """
