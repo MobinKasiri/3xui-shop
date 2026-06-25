@@ -118,6 +118,11 @@ def missing_joined_channels(audits: list[ChannelAudit]) -> list[RequiredChannel]
     ]
 
 
+def is_membership_confirmed(audits: list[ChannelAudit]) -> bool:
+    """True only when every required channel is verified JOINED."""
+    return bool(audits) and all(item.result == VerifyResult.JOINED for item in audits)
+
+
 async def should_block_for_channels(
     bot: Bot,
     user_id: int,
@@ -132,12 +137,7 @@ async def should_block_for_channels(
         return False, []
 
     audits = await audit_channels(bot, user_id, channels)
-    missing = missing_joined_channels(audits)
-    if missing:
-        return True, missing
-
-    if all(item.result == VerifyResult.JOINED for item in audits):
+    if is_membership_confirmed(audits):
         return False, []
 
-    # Bot cannot verify (not channel admin) — keep everyone gated
-    return True, []
+    return True, missing_joined_channels(audits)

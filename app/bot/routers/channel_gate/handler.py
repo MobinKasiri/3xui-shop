@@ -11,6 +11,8 @@ from app.bot.i18n import fa
 from app.bot.routers.main_menu.handler import send_welcome
 from app.bot.services.required_channels import (
     audit_channels,
+    channel_gate_keyboard,
+    is_membership_confirmed,
     missing_joined_channels,
 )
 from app.db.models import User
@@ -32,14 +34,26 @@ async def cb_channel_joined(
     bot = callback.bot
     channels = config.bot.gate_channels if config else ()
 
+    if not channels:
+        await callback.answer("کانال الزامی تنظیم نشده است.", show_alert=True)
+        return
+
     audits = await audit_channels(bot, user.tg_id, channels)
-    missing = missing_joined_channels(audits)
-    if missing:
-        names = ", ".join(ch.label for ch in missing)
-        await callback.answer(
-            fa.CHANNEL_GATE_NOT_JOINED.format(channels=names),
-            show_alert=True,
-        )
+    if not is_membership_confirmed(audits):
+        missing = missing_joined_channels(audits)
+        if missing:
+            names = ", ".join(ch.label for ch in missing)
+            await callback.answer(
+                fa.CHANNEL_GATE_NOT_JOINED.format(channels=names),
+                show_alert=True,
+            )
+        else:
+            logger.warning(
+                "Channel membership unverifiable for user %s — is bot admin in %s?",
+                user.tg_id,
+                ", ".join(ch.chat_id for ch in channels),
+            )
+            await callback.answer(fa.CHANNEL_GATE_VERIFY_FAILED, show_alert=True)
         return
 
     await User.update(session, user.tg_id, channel_gate_passed=True)
