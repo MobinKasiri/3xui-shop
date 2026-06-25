@@ -124,12 +124,12 @@ def _duration_text(cfg: VPNConfig) -> str:
     return f"{to_persian_digits(cfg.plan_days)} روز"
 
 
-def _public_sub_url(vpn: VPNService | None, cfg: VPNConfig) -> str:
+def _sub_url(vpn: VPNService | None, cfg: VPNConfig) -> str:
     if vpn:
-        return vpn.public_sub_url(cfg.subscription_id, cfg.subscription_url)
-    from app.bot.utils.sub_url import normalize_to_standard_url
+        return vpn.sub_url(cfg.subscription_id)
+    from app.bot.utils.sub_url import normalize_subscription_url
 
-    return normalize_to_standard_url(cfg.subscription_url)
+    return normalize_subscription_url(cfg.subscription_url)
 
 
 async def _detail_text(
@@ -150,7 +150,7 @@ async def _detail_text(
             pass
 
     vless = ws_link or reality_link or "—"
-    sub_url = _public_sub_url(vpn, cfg)
+    sub_url = _sub_url(vpn, cfg)
     text = fa.CONFIG_DETAIL.format(
         name=cfg.service_name,
         plan_name="VIP",
@@ -303,7 +303,7 @@ async def cb_sub(
         await _alert(callback, fa.ERRORS["config_not_found"])
         return
     vpn: VPNService | None = kwargs.get("vpn_service")
-    sub_url = _public_sub_url(vpn, cfg)
+    sub_url = _sub_url(vpn, cfg)
     text = fa.CONFIG_GET_SUB_TEXT.format(name=cfg.service_name, url=sub_url)
     await callback.message.edit_text(
         text,
@@ -362,7 +362,7 @@ async def cb_reset_sub(
     except XUIError:
         await _alert(callback, fa.ERRORS["api_error"])
         return
-    sub_url = _public_sub_url(vpn, cfg)
+    sub_url = _sub_url(vpn, cfg)
     await callback.message.answer(
         fa.CONFIG_RESET_SUB_DONE.format(url=sub_url),
         parse_mode="HTML",
@@ -385,7 +385,7 @@ async def cb_qr(
         await _alert(callback, fa.ERRORS["config_not_found"])
         return
     vpn: VPNService | None = kwargs.get("vpn_service")
-    sub_url = _public_sub_url(vpn, cfg)
+    sub_url = _sub_url(vpn, cfg)
     qr = make_qr_png(sub_url)
     photo = BufferedInputFile(qr.getvalue(), filename="qr.png")
     await callback.message.answer_photo(

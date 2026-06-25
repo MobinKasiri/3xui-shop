@@ -863,12 +863,12 @@ async def _create_configs_for_user(
     )
 
 
-def _public_sub_url(vpn: VPNService | None, cfg: VPNConfig) -> str:
+def _sub_url(vpn: VPNService | None, cfg: VPNConfig) -> str:
     if vpn:
-        return vpn.public_sub_url(cfg.subscription_id, cfg.subscription_url)
-    from app.bot.utils.sub_url import normalize_to_standard_url
+        return vpn.sub_url(cfg.subscription_id)
+    from app.bot.utils.sub_url import normalize_subscription_url
 
-    return normalize_to_standard_url(cfg.subscription_url)
+    return normalize_subscription_url(cfg.subscription_url)
 
 
 def _bulk_success_keyboard() -> InlineKeyboardMarkup:
@@ -903,12 +903,12 @@ async def _send_purchase_success(message: Message, results, plan: dict, vpn=None
             gb=cfg.plan_gb,
             days=cfg.plan_days,
             expiry=_expiry_text_for_config(cfg),
-            sub_url=_public_sub_url(vpn, cfg),
+            sub_url=_sub_url(vpn, cfg),
         )
         return
 
     lines = [
-        fa.PURCHASE_LINE.format(name=r.config.service_name, sub_url=_public_sub_url(vpn, r.config))
+        fa.PURCHASE_LINE.format(name=r.config.service_name, sub_url=_sub_url(vpn, r.config))
         for r in results
     ]
     text = fa.PURCHASE_SUCCESS_BULK.format(
@@ -1044,12 +1044,12 @@ async def _send_purchase_success_to_user(bot, user_id: int, results, plan: dict,
             gb=cfg.plan_gb,
             days=cfg.plan_days,
             expiry=_expiry_text_for_config(cfg),
-            sub_url=_public_sub_url(vpn, cfg),
+            sub_url=_sub_url(vpn, cfg),
         )
         return
 
     lines = [
-        fa.PURCHASE_LINE.format(name=r.config.service_name, sub_url=_public_sub_url(vpn, r.config))
+        fa.PURCHASE_LINE.format(name=r.config.service_name, sub_url=_sub_url(vpn, r.config))
         for r in results
     ]
     text = fa.PURCHASE_SUCCESS_BULK.format(

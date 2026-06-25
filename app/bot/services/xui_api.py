@@ -413,10 +413,8 @@ class XUIApiService:
         )
         return data
 
-    async def ensure_subscription_settings(
-        self, *, sub_base_url: str = "", clash_base_url: str = ""
-    ) -> None:
-        """Subscription panel: clean names + Iran bypass routing on standard /s/ sub."""
+    async def ensure_subscription_settings(self, *, sub_base_url: str = "") -> None:
+        """Subscription panel: clean names + optional Iran routing on standard /s/ sub."""
         try:
             data = await self._request("POST", "/panel/api/setting/all")
         except XUIError as exc:
@@ -449,28 +447,13 @@ class XUIApiService:
             if settings.get("subURI") != sub_uri:
                 settings["subURI"] = sub_uri
                 changed = True
-        # Keep Clash endpoint available for power users; bot uses /s/ for customers.
-        clash_path = (settings.get("subClashPath") or "/clash/").strip()
-        if not clash_path.startswith("/"):
-            clash_path = f"/{clash_path}"
-        if not clash_path.endswith("/"):
-            clash_path = f"{clash_path}/"
-        if settings.get("subClashPath") != clash_path:
-            settings["subClashPath"] = clash_path
-            changed = True
-        if clash_base_url:
-            clash_uri = clash_base_url.rstrip("/") + "/"
-            if settings.get("subClashURI") != clash_uri:
-                settings["subClashURI"] = clash_uri
-                changed = True
         if changed:
             try:
                 await self._request("POST", "/panel/api/setting/update", json=settings)
                 logger.info(
-                    "Panel subscription: routing=%s subURI=%s clashURI=%s",
+                    "Panel subscription: routing=%s subURI=%s",
                     settings.get("subEnableRouting"),
                     settings.get("subURI", ""),
-                    settings.get("subClashURI", ""),
                 )
             except XUIError as exc:
                 logger.warning("Could not update panel subscription settings: %s", exc)

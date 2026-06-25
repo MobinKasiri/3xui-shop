@@ -268,7 +268,6 @@ def load_config() -> Config:
                 "XUI_SUB_BASE_URL",
                 default="https://sub.manchesterchocolates.ir/s/",
             ),
-            SUB_CLASH_BASE_URL=env.str("XUI_SUB_CLASH_BASE_URL", default=""),
             INBOUND_FILTER=_parse_inbound_filter(env),
             START_AFTER_FIRST_USE=env.bool("XUI_START_AFTER_FIRST_USE", default=True),
             DEFAULT_DURATION_DAYS=_int_env(env, "XUI_DEFAULT_DURATION_DAYS", default=30),

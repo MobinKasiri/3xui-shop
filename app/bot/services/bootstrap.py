@@ -41,13 +41,10 @@ async def bootstrap_inbounds(config: Config) -> bool:
                 "NODE_SYNC_ENABLED=true — bot will SSH to direct nodes (usually blocked). "
                 "Set NODE_SYNC_ENABLED=false; nodes use pull sync instead."
             )
-        from app.bot.utils.sub_url import resolve_clash_sub_base, resolve_standard_sub_base
+        from app.bot.utils.sub_url import resolve_sub_base
 
         await xui_service.ensure_subscription_settings(
-            sub_base_url=resolve_standard_sub_base(config.xui.SUB_BASE_URL),
-            clash_base_url=resolve_clash_sub_base(
-                config.xui.SUB_BASE_URL, config.xui.SUB_CLASH_BASE_URL
-            ),
+            sub_base_url=resolve_sub_base(config.xui.SUB_BASE_URL),
         )
         return True
     except Exception as e:
@@ -62,7 +59,7 @@ async def bootstrap_inbounds(config: Config) -> bool:
 
 async def sync_subscription_urls(config: Config, session_factory) -> None:
     """Point stored subscription URLs at XUI_SUB_BASE_URL (/s/{sub_id})."""
-    from app.bot.utils.sub_url import resolve_standard_sub_base
+    from app.bot.utils.sub_url import resolve_sub_base
     from app.db.models import VPNConfig
 
     standard = config.xui.SUB_BASE_URL.strip()
@@ -70,7 +67,7 @@ async def sync_subscription_urls(config: Config, session_factory) -> None:
         logger.warning("XUI_SUB_BASE_URL is empty — skipping subscription URL sync")
         return
 
-    base = resolve_standard_sub_base(standard)
+    base = resolve_sub_base(standard)
     logger.info("Subscription URL base: %s", base)
 
     async with session_factory() as session:
@@ -112,7 +109,6 @@ def get_vpn_service(config: Config) -> VPNService | None:
             xui=xui_service,
             inbound_ids=INBOUND_IDS,
             sub_base_url=config.xui.SUB_BASE_URL,
-            sub_clash_base_url=config.xui.SUB_CLASH_BASE_URL,
             start_after_first_use=config.xui.START_AFTER_FIRST_USE,
             default_duration_days=config.xui.DEFAULT_DURATION_DAYS,
             refresh_inbound_ids=lambda: refresh_inbound_ids(config),
