@@ -2,27 +2,35 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import jdatetime
 
 from app.bot.utils.persian import to_persian_digits
 
+TEHRAN = ZoneInfo("Asia/Tehran")
 
-def to_jalali(dt: datetime) -> str:
-    """Convert datetime to Jalali date string like 1403/05/28."""
+
+def _to_tehran(dt: datetime) -> datetime:
+    """Normalize any datetime to naive wall-clock time in Asia/Tehran."""
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
-    jd = jdatetime.datetime.fromgregorian(datetime=dt)
+    return dt.astimezone(TEHRAN).replace(tzinfo=None)
+
+
+def to_jalali(dt: datetime) -> str:
+    """Convert datetime to Jalali date string like 1403/05/28 (Tehran timezone)."""
+    local = _to_tehran(dt)
+    jd = jdatetime.datetime.fromgregorian(datetime=local)
     raw = f"{jd.year}/{jd.month:02d}/{jd.day:02d}"
     return to_persian_digits(raw)
 
 
 def to_jalali_full(dt: datetime) -> str:
-    """Convert datetime to full Jalali datetime string."""
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    jd = jdatetime.datetime.fromgregorian(datetime=dt)
-    raw = f"{jd.year}/{jd.month:02d}/{jd.day:02d} {jd.hour:02d}:{jd.minute:02d}"
+    """Convert datetime to full Jalali datetime string (Tehran timezone)."""
+    local = _to_tehran(dt)
+    jd = jdatetime.datetime.fromgregorian(datetime=local)
+    raw = f"{jd.year}/{jd.month:02d}/{jd.day:02d} {local.hour:02d}:{local.minute:02d}"
     return to_persian_digits(raw)
 
 
