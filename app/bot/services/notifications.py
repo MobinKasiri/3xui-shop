@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from aiogram import Bot
-from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup, Message
 from app.bot.utils.keyboards import K
 
 from app.bot.i18n import fa
@@ -45,17 +45,21 @@ def _approve_reject_keyboard(approve_cb: str, reject_cb: str, *, wallet: bool) -
 async def _notify_admin_chats(
     bot: Bot,
     admin_chat_ids: list[int],
-    send_fn: Callable[[Bot, int], Awaitable[None]],
-) -> None:
+    send_fn: Callable[[Bot, int], Awaitable[Message | None]],
+) -> list[tuple[int, Message]]:
     seen: set[int] = set()
+    sent: list[tuple[int, Message]] = []
     for chat_id in admin_chat_ids:
         if not chat_id or chat_id in seen:
             continue
         seen.add(chat_id)
         try:
-            await send_fn(bot, chat_id)
+            msg = await send_fn(bot, chat_id)
+            if msg:
+                sent.append((chat_id, msg))
         except Exception as e:
             logger.error("Failed to notify admin chat %s: %s", chat_id, e)
+    return sent
 
 
 async def forward_purchase_to_admin(
@@ -73,7 +77,7 @@ async def forward_purchase_to_admin(
     discount_code: str | None,
     discount_amount: int,
     receipt_photo: str | None,
-) -> None:
+) -> Message | None:
     dt = datetime.now(tz=timezone.utc)
     discount_text = "—"
     if discount_code:
@@ -98,22 +102,22 @@ async def forward_purchase_to_admin(
     )
     try:
         if receipt_photo:
-            await bot.send_photo(
+            return await bot.send_photo(
                 admin_chat_id,
                 photo=receipt_photo,
                 caption=text,
                 parse_mode="HTML",
                 reply_markup=markup,
             )
-        else:
-            await bot.send_message(
-                admin_chat_id,
-                text,
-                parse_mode="HTML",
-                reply_markup=markup,
-            )
+        return await bot.send_message(
+            admin_chat_id,
+            text,
+            parse_mode="HTML",
+            reply_markup=markup,
+        )
     except Exception as e:
         logger.error(f"Failed to forward purchase to admin {admin_chat_id}: {e}")
+        return None
 
 
 async def forward_purchase_to_all_admins(
@@ -121,11 +125,11 @@ async def forward_purchase_to_all_admins(
     *,
     admin_chat_ids: list[int],
     **kwargs: Any,
-) -> None:
-    async def _send(b: Bot, chat_id: int) -> None:
-        await forward_purchase_to_admin(b, admin_chat_id=chat_id, **kwargs)
+) -> list[tuple[int, Message]]:
+    async def _send(b: Bot, chat_id: int) -> Message | None:
+        return await forward_purchase_to_admin(b, admin_chat_id=chat_id, **kwargs)
 
-    await _notify_admin_chats(bot, admin_chat_ids, _send)
+    return await _notify_admin_chats(bot, admin_chat_ids, _send)
 
 
 async def forward_wallet_topup_to_admin(
@@ -138,7 +142,7 @@ async def forward_wallet_topup_to_admin(
     tg_id: int,
     amount: int,
     receipt_photo: str | None,
-) -> None:
+) -> Message | None:
     dt = datetime.now(tz=timezone.utc)
     text = fa.ADMIN_WALLET_FWD.format(
         tx_id=tx_id,
@@ -155,22 +159,22 @@ async def forward_wallet_topup_to_admin(
     )
     try:
         if receipt_photo:
-            await bot.send_photo(
+            return await bot.send_photo(
                 admin_chat_id,
                 photo=receipt_photo,
                 caption=text,
                 parse_mode="HTML",
                 reply_markup=markup,
             )
-        else:
-            await bot.send_message(
-                admin_chat_id,
-                text,
-                parse_mode="HTML",
-                reply_markup=markup,
-            )
+        return await bot.send_message(
+            admin_chat_id,
+            text,
+            parse_mode="HTML",
+            reply_markup=markup,
+        )
     except Exception as e:
         logger.error(f"Failed to forward wallet topup to admin {admin_chat_id}: {e}")
+        return None
 
 
 async def forward_wallet_topup_to_all_admins(
@@ -178,8 +182,8 @@ async def forward_wallet_topup_to_all_admins(
     *,
     admin_chat_ids: list[int],
     **kwargs: Any,
-) -> None:
-    async def _send(b: Bot, chat_id: int) -> None:
-        await forward_wallet_topup_to_admin(b, admin_chat_id=chat_id, **kwargs)
+) -> list[tuple[int, Message]]:
+    async def _send(b: Bot, chat_id: int) -> Message | None:
+        return await forward_wallet_topup_to_admin(b, admin_chat_id=chat_id, **kwargs)
 
-    await _notify_admin_chats(bot, admin_chat_ids, _send)
+    return await _notify_admin_chats(bot, admin_chat_ids, _send)

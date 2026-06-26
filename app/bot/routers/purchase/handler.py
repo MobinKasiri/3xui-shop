@@ -9,7 +9,7 @@ Flow:
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from aiogram import F, Router
@@ -24,6 +24,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
 from app.bot.services.notifications import forward_purchase_to_all_admins
+from app.bot.services.tx_admin_notify import (
+    actor_from_callback,
+    admin_chat_ids,
+    record_forward_messages,
+    refresh_processed_views_if_done,
+    sync_processed_views,
+)
+from app.bot.utils.jalali import to_jalali_full
 from app.bot.utils.keyboards import K
 from app.bot.services.wallet import deduct
 from app.bot.utils.discount import record_usage, validate_and_apply
@@ -816,24 +824,33 @@ async def _create_pending_purchase_tx(
     if receipt_ref:
         await Transaction.update(session, tx.id, payment_receipt=receipt_ref)
 
-    admin_ids = list(config.bot.ADMINS) if config else []
-    if config and config.payment.ADMIN_CHAT_ID and config.payment.ADMIN_CHAT_ID not in admin_ids:
-        admin_ids.append(config.payment.ADMIN_CHAT_ID)
+    dt = datetime.now(tz=timezone.utc)
 
-    await forward_purchase_to_all_admins(
+    fwd_payload = {
+        "tx_id": tx.id,
+        "user_name": user.full_name,
+        "username": user.username,
+        "tg_id": user.tg_id,
+        "plan_name": plan.get("tier_name", "VIP"),
+        "quantity": int(data.get("quantity", 1)),
+        "service_name": names[0] if names else "—",
+        "amount": payment_amount,
+        "discount_code": data.get("discount_code"),
+        "discount_amount": int(data.get("discount_amount", 0)),
+        "datetime": to_jalali_full(dt),
+    }
+    sent = await forward_purchase_to_all_admins(
         message.bot,
-        admin_chat_ids=admin_ids,
-        tx_id=tx.id,
-        user_name=user.full_name,
-        username=user.username,
-        tg_id=user.tg_id,
-        plan_name=plan.get("tier_name", "VIP"),
-        quantity=int(data.get("quantity", 1)),
-        service_name=names[0] if names else "—",
-        amount=payment_amount,
-        discount_code=data.get("discount_code"),
-        discount_amount=int(data.get("discount_amount", 0)),
+        admin_chat_ids=admin_chat_ids(config),
         receipt_photo=receipt_photo,
+        **fwd_payload,
+    )
+    await record_forward_messages(
+        session,
+        tx_id=tx.id,
+        kind="purchase",
+        payload=fwd_payload,
+        sent=sent,
     )
 
     await message.answer(fa.RECEIPT_RECEIVED)
@@ -948,6 +965,7 @@ async def cb_admin_approve(
         await callback.answer(fa.ERRORS["not_found"], show_alert=True)
         return
     if tx.status != TX_PENDING:
+        await refresh_processed_views_if_done(callback.bot, session, config, tx_id)
         await callback.answer("✅ این تراکنش قبلاً پردازش شده است.", show_alert=True)
         return
 
@@ -957,7 +975,6 @@ async def cb_admin_approve(
         return
 
     if tx.type != TX_PURCHASE:
-        # Wallet topup is handled in wallet handler
         return
 
     import json as _json
@@ -1002,13 +1019,18 @@ async def cb_admin_approve(
         await callback.answer(fa.ERRORS["config_create_failed"], show_alert=True)
         return
 
-    await Transaction.update(
+    processed_at = datetime.utcnow()
+    claimed = await Transaction.claim_if_pending(
         session,
         tx_id,
         status="confirmed",
-        confirmed_at=datetime.utcnow(),
+        confirmed_at=processed_at,
         config_id=results[0].config.id if results else None,
     )
+    if not claimed:
+        await refresh_processed_views_if_done(callback.bot, session, config, tx_id)
+        return
+
     if intent.get("discount_id"):
         try:
             await record_usage(session, int(intent["discount_id"]), user.tg_id)
@@ -1017,10 +1039,15 @@ async def cb_admin_approve(
 
     await _credit_referrer(session, user, config, callback.bot)
 
-    try:
-        await callback.message.edit_reply_markup(reply_markup=None)
-    except Exception:
-        pass
+    await sync_processed_views(
+        callback.bot,
+        session,
+        config,
+        tx_id,
+        actor=actor_from_callback(callback),
+        action="approved",
+        processed_at=processed_at.replace(tzinfo=timezone.utc),
+    )
 
     try:
         await _send_purchase_success_to_user(
@@ -1072,15 +1099,27 @@ async def cb_admin_reject(
     tx_id = int(callback.data.rsplit(":", 1)[-1])
     tx = await Transaction.get(session, tx_id)
     if not tx or tx.status != TX_PENDING:
+        if tx:
+            await refresh_processed_views_if_done(callback.bot, session, config, tx_id)
         await callback.answer("این تراکنش قبلاً پردازش شده.", show_alert=True)
         return
 
-    await Transaction.update(session, tx_id, status="rejected", admin_note="rejected by admin")
+    claimed = await Transaction.claim_if_pending(session, tx_id, status="rejected")
+    if not claimed:
+        await refresh_processed_views_if_done(callback.bot, session, config, tx_id)
+        await callback.answer("این تراکنش قبلاً پردازش شده.", show_alert=True)
+        return
 
-    try:
-        await callback.message.edit_reply_markup(reply_markup=None)
-    except Exception:
-        pass
+    processed_at = datetime.now(tz=timezone.utc)
+    await sync_processed_views(
+        callback.bot,
+        session,
+        config,
+        tx_id,
+        actor=actor_from_callback(callback),
+        action="rejected",
+        processed_at=processed_at,
+    )
 
     try:
         await callback.bot.send_message(

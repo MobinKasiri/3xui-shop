@@ -53,6 +53,7 @@ class Transaction(Base):
     discount_amount: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=TX_PENDING)
     admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bot_admin_notify: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=func.now(), nullable=False)
     confirmed_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
@@ -110,6 +111,17 @@ class Transaction(Base):
     async def update(cls, session: AsyncSession, tx_id: int, **kwargs: Any) -> bool:
         result = await session.execute(
             update(cls).where(cls.id == tx_id).values(**kwargs)
+        )
+        await session.commit()
+        return result.rowcount > 0
+
+    @classmethod
+    async def claim_if_pending(cls, session: AsyncSession, tx_id: int, **kwargs: Any) -> bool:
+        """Update only while status is pending — avoids double approve races."""
+        result = await session.execute(
+            update(cls)
+            .where(cls.id == tx_id, cls.status == TX_PENDING)
+            .values(**kwargs)
         )
         await session.commit()
         return result.rowcount > 0

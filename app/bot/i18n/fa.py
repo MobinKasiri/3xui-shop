@@ -300,6 +300,18 @@ ADMIN_WALLET_FWD = (
 ADMIN_APPROVE_BTN = "تایید و ایجاد سرویس"
 ADMIN_APPROVE_WALLET_BTN = "تایید شارژ"
 ADMIN_REJECT_BTN = "رد کردن"
+ADMIN_TX_PROCESSED_SHORT = (
+    "{icon}<b>درخواست #{tx_id} {action_label}</b>\n\n"
+    "👤 توسط: {admin_name} ({admin_ref})\n"
+    "🕐 {processed_at}"
+)
+ADMIN_TX_PROCESSED_SUPER_FOOTER = (
+    "\n\n━━━━━━━━━━━━━━━━\n"
+    "{icon}<b>{action_label}</b>\n"
+    "👤 مدیر: {admin_name} ({admin_ref})\n"
+    "🆔 آیدی مدیر: <code>{admin_tg_id}</code>\n"
+    "🕐 {processed_at}"
+)
 
 # ─── Manage Configs ──────────────────────────────────────────────────────────
 

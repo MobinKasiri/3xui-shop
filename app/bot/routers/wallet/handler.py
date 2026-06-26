@@ -9,7 +9,7 @@ Wallet / profile (screenshot 11).
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
@@ -24,6 +24,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
 from app.bot.services.notifications import forward_wallet_topup_to_all_admins
+from app.bot.services.tx_admin_notify import (
+    actor_from_callback,
+    admin_chat_ids,
+    record_forward_messages,
+    refresh_processed_views_if_done,
+    sync_processed_views,
+)
 from app.bot.utils.payment_keyboard import card_payment_keyboard
 from app.bot.utils.receipt_storage import persist_receipt_photo
 from app.bot.utils.jalali import to_jalali
@@ -216,19 +223,29 @@ async def msg_receipt(
     if receipt_ref:
         await Transaction.update(session, tx.id, payment_receipt=receipt_ref)
 
-    admin_ids = list(config.bot.ADMINS) if config else []
-    if config and config.payment.ADMIN_CHAT_ID and config.payment.ADMIN_CHAT_ID not in admin_ids:
-        admin_ids.append(config.payment.ADMIN_CHAT_ID)
+    from app.bot.utils.jalali import to_jalali_full
 
-    await forward_wallet_topup_to_all_admins(
+    dt = datetime.now(tz=timezone.utc)
+    fwd_payload = {
+        "tx_id": tx.id,
+        "user_name": user.full_name,
+        "username": user.username,
+        "tg_id": user.tg_id,
+        "amount": payment_amount,
+        "datetime": to_jalali_full(dt),
+    }
+    sent = await forward_wallet_topup_to_all_admins(
         message.bot,
-        admin_chat_ids=admin_ids,
-        tx_id=tx.id,
-        user_name=user.full_name,
-        username=user.username,
-        tg_id=user.tg_id,
-        amount=payment_amount,
+        admin_chat_ids=admin_chat_ids(config),
         receipt_photo=receipt_photo,
+        **fwd_payload,
+    )
+    await record_forward_messages(
+        session,
+        tx_id=tx.id,
+        kind="wallet",
+        payload=fwd_payload,
+        sent=sent,
     )
     await message.answer(fa.RECEIPT_RECEIVED)
     await state.clear()
@@ -322,6 +339,7 @@ async def cb_admin_approve_wallet(
         await callback.answer(fa.ERRORS["not_found"], show_alert=True)
         return
     if tx.status != TX_PENDING:
+        await refresh_processed_views_if_done(callback.bot, session, config, tx_id)
         await callback.answer("این تراکنش قبلاً پردازش شده.", show_alert=True)
         return
 
@@ -330,19 +348,31 @@ async def cb_admin_approve_wallet(
         await callback.answer(fa.ERRORS["not_found"], show_alert=True)
         return
 
-    new_balance = user.balance + tx.amount
-    await User.update(session, user.tg_id, balance=new_balance)
-    await Transaction.update(
+    processed_at = datetime.utcnow()
+    claimed = await Transaction.claim_if_pending(
         session,
         tx_id,
         status=TX_CONFIRMED,
-        confirmed_at=datetime.utcnow(),
+        confirmed_at=processed_at,
+    )
+    if not claimed:
+        await refresh_processed_views_if_done(callback.bot, session, config, tx_id)
+        await callback.answer("این تراکنش قبلاً پردازش شده.", show_alert=True)
+        return
+
+    new_balance = user.balance + tx.amount
+    await User.update(session, user.tg_id, balance=new_balance)
+
+    await sync_processed_views(
+        callback.bot,
+        session,
+        config,
+        tx_id,
+        actor=actor_from_callback(callback),
+        action="approved",
+        processed_at=processed_at.replace(tzinfo=timezone.utc),
     )
 
-    try:
-        await callback.message.edit_reply_markup(reply_markup=None)
-    except Exception:
-        pass
     try:
         await callback.bot.send_message(
             user.tg_id,
@@ -366,18 +396,31 @@ async def cb_admin_reject_wallet(
     tx_id = int(callback.data.rsplit(":", 1)[-1])
     tx = await Transaction.get(session, tx_id)
     if not tx or tx.type != TX_WALLET_TOPUP or tx.status != TX_PENDING:
+        if tx:
+            await refresh_processed_views_if_done(callback.bot, session, config, tx_id)
         await callback.answer("این تراکنش قبلاً پردازش شده.", show_alert=True)
         return
-    await Transaction.update(
+
+    claimed = await Transaction.claim_if_pending(
         session,
         tx_id,
         status=TX_REJECTED,
-        admin_note="rejected by admin",
     )
-    try:
-        await callback.message.edit_reply_markup(reply_markup=None)
-    except Exception:
-        pass
+    if not claimed:
+        await refresh_processed_views_if_done(callback.bot, session, config, tx_id)
+        await callback.answer("این تراکنش قبلاً پردازش شده.", show_alert=True)
+        return
+
+    processed_at = datetime.now(tz=timezone.utc)
+    await sync_processed_views(
+        callback.bot,
+        session,
+        config,
+        tx_id,
+        actor=actor_from_callback(callback),
+        action="rejected",
+        processed_at=processed_at,
+    )
     try:
         await callback.bot.send_message(
             tx.user_id,
