@@ -5,7 +5,7 @@ import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Literal, Literal
+from typing import Any, Literal
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
@@ -308,40 +308,72 @@ async def _fallback_text_notify(
     *,
     tx_id: int,
     kind: str,
+    receipt_photo: str | None,
     payload: dict[str, Any],
 ) -> list[tuple[int, Message]]:
-    """Plain-text fallback when photo/HTML notify fails for all admins."""
+    """Full-detail fallback when primary photo/HTML notify fails for an admin."""
+    from app.bot.services.notifications import _approve_reject_keyboard
+
     if kind == "wallet":
-        text = (
-            f"درخواست شارژ کیف پول #{tx_id}\n"
-            f"کاربر: {payload.get('user_name')} ({payload.get('username') or '—'})\n"
-            f"مبلغ: {payload.get('amount')} تومان"
+        text = fa.ADMIN_WALLET_FWD.format(
+            tx_id=tx_id,
+            name=payload.get("user_name"),
+            username=payload.get("username") or "—",
+            tg_id=payload.get("tg_id"),
+            amount=format_toman(int(payload.get("amount", 0))),
+            datetime=payload.get("datetime") or "—",
         )
         approve_cb = f"admin:approve_wallet:{tx_id}"
         reject_cb = f"admin:reject_wallet:{tx_id}"
         wallet = True
     else:
-        text = (
-            f"درخواست پرداخت #{tx_id}\n"
-            f"کاربر: {payload.get('user_name')} ({payload.get('username') or '—'})\n"
-            f"پلن: {payload.get('plan_name')} — {payload.get('service_name')}\n"
-            f"مبلغ: {payload.get('amount')} تومان"
+        discount_text = "—"
+        if payload.get("discount_code"):
+            discount_text = (
+                f"{payload['discount_code']} "
+                f"(-{format_toman(int(payload.get('discount_amount', 0)))} ت)"
+            )
+        text = fa.ADMIN_PAYMENT_FWD.format(
+            tx_id=tx_id,
+            name=payload.get("user_name"),
+            username=payload.get("username") or "—",
+            tg_id=payload.get("tg_id"),
+            plan_name=payload.get("plan_name"),
+            quantity=to_persian_digits(int(payload.get("quantity", 1))),
+            service_name=payload.get("service_name") or "—",
+            amount=format_toman(int(payload.get("amount", 0))),
+            discount=discount_text,
+            datetime=payload.get("datetime") or "—",
         )
         approve_cb = f"admin:approve_purchase:{tx_id}"
         reject_cb = f"admin:reject_purchase:{tx_id}"
         wallet = False
 
-    from app.bot.services.notifications import _approve_reject_keyboard
-
     markup = _approve_reject_keyboard(approve_cb, reject_cb, wallet=wallet)
     sent: list[tuple[int, Message]] = []
     for chat_id in admin_ids:
         try:
-            msg = await bot.send_message(chat_id, text, reply_markup=markup)
+            if receipt_photo:
+                msg = await bot.send_photo(
+                    chat_id,
+                    photo=receipt_photo,
+                    caption=text,
+                    parse_mode="HTML",
+                    reply_markup=markup,
+                )
+            else:
+                msg = await bot.send_message(chat_id, text, parse_mode="HTML", reply_markup=markup)
             sent.append((chat_id, msg))
         except Exception as exc:
             logger.error("Fallback admin notify failed chat=%s tx=%s: %s", chat_id, tx_id, exc)
     return sent
+
+
+def _forward_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
+    kwargs = dict(payload)
+    if "datetime" in kwargs:
+        kwargs["datetime_str"] = kwargs.pop("datetime")
+    return kwargs
 
 
 async def dispatch_tx_to_admins(
@@ -371,29 +403,35 @@ async def dispatch_tx_to_admins(
     payload = {**payload, "tx_id": tx_id}
     logger.info("TX %s: notifying admins %s (kind=%s)", tx_id, admin_ids, kind)
 
+    forward_kwargs = _forward_kwargs(payload)
     if kind == "wallet":
         sent = await forward_wallet_topup_to_all_admins(
             bot,
             admin_chat_ids=admin_ids,
             receipt_photo=receipt_photo,
-            **payload,
+            **forward_kwargs,
         )
     else:
         sent = await forward_purchase_to_all_admins(
             bot,
             admin_chat_ids=admin_ids,
             receipt_photo=receipt_photo,
-            **payload,
+            **forward_kwargs,
         )
 
     if not sent:
         logger.warning(
-            "TX %s: primary admin notify failed for all %d admin(s) — trying fallback text",
+            "TX %s: primary admin notify failed for all %d admin(s) — trying fallback",
             tx_id,
             len(admin_ids),
         )
         sent = await _fallback_text_notify(
-            bot, admin_ids, tx_id=tx_id, kind=kind, payload=payload
+            bot,
+            admin_ids,
+            tx_id=tx_id,
+            kind=kind,
+            receipt_photo=receipt_photo,
+            payload=payload,
         )
 
     if sent:

@@ -77,6 +77,7 @@ async def forward_purchase_to_admin(
     discount_code: str | None,
     discount_amount: int,
     receipt_photo: str | None,
+    datetime_str: str | None = None,
 ) -> Message | None:
     dt = datetime.now(tz=timezone.utc)
     discount_text = "—"
@@ -93,7 +94,7 @@ async def forward_purchase_to_admin(
         service_name=service_name,
         amount=format_toman(amount),
         discount=discount_text,
-        datetime=to_jalali_full(dt),
+        datetime=datetime_str or to_jalali_full(dt),
     )
     markup = _approve_reject_keyboard(
         approve_cb=f"admin:approve_purchase:{tx_id}",
@@ -142,6 +143,7 @@ async def forward_wallet_topup_to_admin(
     tg_id: int,
     amount: int,
     receipt_photo: str | None,
+    datetime_str: str | None = None,
 ) -> Message | None:
     dt = datetime.now(tz=timezone.utc)
     text = fa.ADMIN_WALLET_FWD.format(
@@ -150,7 +152,7 @@ async def forward_wallet_topup_to_admin(
         username=username or "—",
         tg_id=tg_id,
         amount=format_toman(amount),
-        datetime=to_jalali_full(dt),
+        datetime=datetime_str or to_jalali_full(dt),
     )
     markup = _approve_reject_keyboard(
         approve_cb=f"admin:approve_wallet:{tx_id}",
