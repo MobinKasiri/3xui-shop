@@ -52,11 +52,11 @@ APP_LINKS: dict[str, list[tuple[str, str]]] = {
 
 
 OS_ICONS = {
-    "android": "phone",
-    "ios": "phone",
-    "windows": "server",
-    "mac": "settings",
-    "linux": "server",
+    "android": "os_android",
+    "ios": "os_ios",
+    "windows": "os_windows",
+    "mac": "os_mac",
+    "linux": "os_linux",
 }
 
 
@@ -70,7 +70,7 @@ def _os_picker_keyboard() -> InlineKeyboardMarkup:
 def _apps_list_keyboard(os_id: str) -> InlineKeyboardMarkup:
     kb = K()
     for name, url in APP_LINKS.get(os_id, []):
-        kb.primary(name, url=url, icon="download")
+        kb.primary(name, url=url, icon=OS_ICONS.get(os_id, "download"))
     return kb.nav("menu:apps").adjust(1).as_markup()
 
 

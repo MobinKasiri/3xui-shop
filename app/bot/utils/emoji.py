@@ -249,9 +249,11 @@ def resolve_icon(key: str | None, *, default: str = "globe") -> str:
 
 
 def plan_button_icon(plan: dict) -> str:
-    """Consistent vector icon for VIP plan / renew plan buttons."""
+    """Vector icon for VIP plan buttons — colorful EmojiStatus / vector preferred."""
     if plan.get("recommended"):
         return "star"
     key = str(plan.get("emoji_key", "")).strip()
-    return key if key and _icon_spec(key) else "package"
+    if key and _icon_spec(key):
+        return key
+    return "battery"
 

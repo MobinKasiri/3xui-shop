@@ -26,7 +26,7 @@ from app.bot.utils.jalali import to_jalali, to_jalali_full
 from app.bot.utils.keyboards import K
 from app.bot.utils.payment_keyboard import card_payment_keyboard
 from app.bot.utils.persian import format_toman, to_persian_digits
-from app.bot.utils.plans_display import render_plans_table
+from app.bot.utils.plans_display import render_plans_picker_text
 from app.bot.utils.receipt_storage import persist_receipt_photo, receipt_file_id
 from app.bot.utils.renewal_pricing import SERVICE_MAX_DAYS, renewal_quote
 from app.bot.utils.emoji import plan_button_icon, u
@@ -187,7 +187,7 @@ async def start_renew_flow(
 
 
 def _render_plans_text(tier: dict, plans: list[dict]) -> str:
-    return render_plans_table(tier, plans)
+    return render_plans_picker_text(tier)
 
 
 @router.callback_query(F.data.startswith("renew:start:"))

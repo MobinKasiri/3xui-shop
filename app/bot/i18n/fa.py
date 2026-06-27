@@ -142,10 +142,6 @@ BUY_VIP_BTN = "سرویس VIP چند لوکیشن"
 
 VIP_TIER_NAME_DEFAULT = "سرویس VIP چند لوکیشن"
 VIP_PLANS_TABLE_SUBTITLE_DEFAULT = "یک اشتراک — همه سرورها فعال می‌شوند:"
-VIP_PLANS_TABLE_FOOTER_DEFAULT = f"{p('down')}پلن مورد نظر را انتخاب کنید:"
-
-VIP_PLANS_TABLE_ROW = "  {emoji}{gb} گیگ · {days} روز · <b>{price}</b> تومان{badge}"
-VIP_PLANS_TABLE_FOOTER = f"\n{p('down')}پلن مورد نظر را انتخاب کنید:"
 
 VIP_PLAN_BTN = "{lead}{gb} گیگ · {price} تومان{badge}"
 
@@ -536,7 +532,7 @@ APPS_OS_BTN = {
     "mac": "Mac",
     "linux": "Linux",
 }
-APPS_OS_HEADER = f"{p('phone')}<b>اپلیکیشن‌های {{os}}</b>\n\nبرنامه مورد نظر را انتخاب کنید:"
+APPS_OS_HEADER = f"{p('download')}<b>اپلیکیشن‌های {{os}}</b>\n\nبرنامه مورد نظر را انتخاب کنید:"
 
 # ─── Support ─────────────────────────────────────────────────────────────────
 

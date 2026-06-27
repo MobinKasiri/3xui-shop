@@ -4,13 +4,15 @@
       "pack": "vector_icons_by_fStikBot",
       "index": 2,
       "alt": "👋",
-      "fallback": "👋"
+      "fallback": "👋",
+      "pack_prefer": "EmojiStatus"
    },
    "globe": {
       "pack": "tgmacicons",
       "index": 0,
       "fallback": "🌐",
-      "alt": "🌐"
+      "alt": "🌐",
+      "pack_prefer": "EmojiStatus"
    },
    "bolt": {
       "pack": "vector_icons_by_fStikBot",
@@ -22,7 +24,8 @@
       "pack": "tgmacicons",
       "index": 45,
       "alt": "🤝",
-      "fallback": "🤝"
+      "fallback": "🤝",
+      "pack_prefer": "EmojiStatus"
    },
    "rose": {
       "pack": "vector_icons_by_fStikBot",
@@ -46,7 +49,8 @@
       "pack": "tgmacicons",
       "index": 28,
       "fallback": "📊",
-      "alt": "📊"
+      "alt": "📊",
+      "pack_prefer": "EmojiStatus"
    },
    "wallet": {
       "pack": "EmojiStatus",
@@ -70,13 +74,15 @@
       "pack": "tgmacicons",
       "index": 19,
       "fallback": "🎧",
-      "alt": "🎧"
+      "alt": "🎧",
+      "pack_prefer": "EmojiStatus"
    },
    "download": {
       "pack": "tgmacicons",
       "index": 38,
       "alt": "📥",
-      "fallback": "📥"
+      "fallback": "📥",
+      "pack_prefer": "EmojiStatus"
    },
    "settings": {
       "pack": "vector_icons_by_fStikBot",
@@ -88,7 +94,8 @@
       "pack": "tgmacicons",
       "index": 42,
       "fallback": "🛒",
-      "alt": "🛒"
+      "alt": "🛒",
+      "pack_prefer": "EmojiStatus"
    },
    "gift": {
       "pack": "EmojiStatus",
@@ -100,19 +107,27 @@
       "pack": "tgmacicons",
       "index": 45,
       "alt": "🤝",
-      "fallback": "🤝"
+      "fallback": "🤝",
+      "pack_prefer": "EmojiStatus"
    },
    "back": {
       "pack": "tgmacicons",
       "index": 5,
       "fallback": "◀️",
-      "alt": "◀️"
+      "alt": "◀️",
+      "pack_prefer": "EmojiStatus"
    },
    "home": {
       "pack": "tgmacicons",
       "index": 41,
       "fallback": "🏠",
-      "alt": "🏠"
+      "alt": "🏠",
+      "pack_prefer": "EmojiStatus",
+      "search": [
+         "🏠",
+         "🏡",
+         "⌂"
+      ]
    },
    "cancel": {
       "pack": "vector_icons_by_fStikBot",
@@ -184,31 +199,36 @@
       "pack": "EmojiStatus",
       "index": 0,
       "alt": "💳",
-      "fallback": "💳"
+      "fallback": "💳",
+      "pack_prefer": "EmojiStatus"
    },
    "bank": {
       "pack": "EmojiStatus",
       "index": 1,
       "alt": "🏦",
-      "fallback": "🏦"
+      "fallback": "🏦",
+      "pack_prefer": "EmojiStatus"
    },
    "money": {
       "pack": "EmojiStatus",
       "index": 3,
       "alt": "💲",
-      "fallback": "💲"
+      "fallback": "💲",
+      "pack_prefer": "EmojiStatus"
    },
    "cash": {
       "pack": "EmojiStatus",
       "index": 4,
       "alt": "💵",
-      "fallback": "💵"
+      "fallback": "💵",
+      "pack_prefer": "EmojiStatus"
    },
    "copy": {
       "pack": "EmojiStatus",
       "index": 5,
       "alt": "📋",
-      "fallback": "📋"
+      "fallback": "📋",
+      "pack_prefer": "EmojiStatus"
    },
    "camera": {
       "pack": "tgmacicons",
@@ -220,13 +240,15 @@
       "pack": "tgmacicons",
       "index": 37,
       "alt": "🧾",
-      "fallback": "🧾"
+      "fallback": "🧾",
+      "pack_prefer": "EmojiStatus"
    },
    "clock": {
       "pack": "tgmacicons",
       "index": 36,
       "alt": "🕐",
-      "fallback": "🕐"
+      "fallback": "🕐",
+      "pack_prefer": "EmojiStatus"
    },
    "battery": {
       "pack": "tgmacicons",
@@ -244,7 +266,8 @@
       "pack": "tgmacicons",
       "index": 20,
       "fallback": "🔗",
-      "alt": "🔗"
+      "alt": "🔗",
+      "pack_prefer": "EmojiStatus"
    },
    "tag": {
       "pack": "tgmacicons",
@@ -256,13 +279,15 @@
       "pack": "tgmacicons",
       "index": 39,
       "fallback": "📦",
-      "alt": "📦"
+      "alt": "📦",
+      "pack_prefer": "EmojiStatus"
    },
    "ticket": {
       "pack": "EmojiStatus",
       "index": 7,
       "alt": "🎟",
-      "fallback": "🎟"
+      "fallback": "🎟",
+      "pack_prefer": "EmojiStatus"
    },
    "dice": {
       "pack": "vector_icons_by_fStikBot",
@@ -274,7 +299,8 @@
       "pack": "tgmacicons",
       "index": 39,
       "alt": "✏️",
-      "fallback": "✏️"
+      "fallback": "✏️",
+      "pack_prefer": "EmojiStatus"
    },
    "trash": {
       "pack": "tgmacicons",
@@ -316,7 +342,8 @@
       "pack": "tgmacicons",
       "index": 13,
       "fallback": "👇",
-      "alt": "👇"
+      "alt": "👇",
+      "pack_prefer": "EmojiStatus"
    },
    "faq": {
       "pack": "tgmacicons",
@@ -334,7 +361,8 @@
       "pack": "tgmacicons",
       "index": 3,
       "alt": "📲",
-      "fallback": "📲"
+      "fallback": "📲",
+      "pack_prefer": "EmojiStatus"
    },
    "lock": {
       "pack": "EmojiStatus",
@@ -358,7 +386,8 @@
       "pack": "tgmacicons",
       "index": 38,
       "alt": "📤",
-      "fallback": "📤"
+      "fallback": "📤",
+      "pack_prefer": "EmojiStatus"
    },
    "note": {
       "pack": "tgmacicons",
@@ -370,13 +399,15 @@
       "pack": "tgmacicons",
       "index": 11,
       "alt": "🆔",
-      "fallback": "🆔"
+      "fallback": "🆔",
+      "pack_prefer": "EmojiStatus"
    },
    "server": {
       "pack": "tgmacicons",
       "index": 15,
       "fallback": "🖥",
-      "alt": "🖥"
+      "alt": "🖥",
+      "pack_prefer": "EmojiStatus"
    },
    "new_badge": {
       "pack": "vector_icons_by_fStikBot",
@@ -389,56 +420,90 @@
       "index": 16,
       "fallback": "🛒",
       "btn_fallback": "🛒",
-      "alt": "🛒"
+      "alt": "🛒",
+      "pack_prefer": "EmojiStatus",
+      "search": [
+         "🛒"
+      ]
    },
    "btn_configs": {
       "pack": "tgmacicons",
       "index": 28,
       "fallback": "📋",
       "btn_fallback": "📋",
-      "alt": "📋"
+      "alt": "📋",
+      "pack_prefer": "EmojiStatus",
+      "search": [
+         "📋"
+      ]
    },
    "btn_balance": {
       "pack": "EmojiStatus",
       "index": 2,
       "fallback": "💳",
       "btn_fallback": "💳",
-      "alt": "💳"
+      "alt": "💳",
+      "pack_prefer": "EmojiStatus",
+      "search": [
+         "💳"
+      ]
    },
    "btn_account": {
       "pack": "tgmacicons",
       "index": 10,
       "fallback": "👤",
       "btn_fallback": "👤",
-      "alt": "👤"
+      "alt": "👤",
+      "pack_prefer": "EmojiStatus",
+      "search": [
+         "👤"
+      ]
    },
    "btn_free": {
       "pack": "EmojiStatus",
       "index": 36,
       "fallback": "🎁",
       "btn_fallback": "🎁",
-      "alt": "🎁"
+      "alt": "🎁",
+      "pack_prefer": "EmojiStatus",
+      "search": [
+         "🎁",
+         "🎀",
+         "🎉"
+      ]
    },
    "btn_support": {
       "pack": "tgmacicons",
       "index": 19,
       "fallback": "💬",
       "btn_fallback": "💬",
-      "alt": "💬"
+      "alt": "💬",
+      "pack_prefer": "EmojiStatus",
+      "search": [
+         "💬"
+      ]
    },
    "btn_apps": {
       "pack": "tgmacicons",
       "index": 38,
       "fallback": "📱",
       "btn_fallback": "📱",
-      "alt": "📱"
+      "alt": "📱",
+      "pack_prefer": "EmojiStatus",
+      "search": [
+         "📱"
+      ]
    },
    "btn_admin": {
       "pack": "tgmacicons",
       "index": 19,
       "fallback": "⚙️",
       "btn_fallback": "⚙️",
-      "alt": "⚙️"
+      "alt": "⚙️",
+      "pack_prefer": "EmojiStatus",
+      "search": [
+         "⚙️"
+      ]
    },
    "flag_de": {
       "pack": "FlagsPack",
@@ -510,12 +575,69 @@
       "pack": "EmojiStatus",
       "index": 0,
       "fallback": "🥇",
-      "alt": "🥇"
+      "alt": "🥇",
+      "pack_prefer": "EmojiStatus"
    },
    "diamond": {
       "pack": "EmojiStatus",
       "index": 0,
       "fallback": "💎",
       "alt": "💎"
+   },
+   "os_android": {
+      "pack": "EmojiStatus",
+      "index": 0,
+      "pack_prefer": "EmojiStatus",
+      "fallback": "🤖",
+      "search": [
+         "🤖",
+         "📱",
+         "🟢",
+         "🤖"
+      ]
+   },
+   "os_ios": {
+      "pack": "EmojiStatus",
+      "index": 0,
+      "pack_prefer": "EmojiStatus",
+      "fallback": "🍎",
+      "search": [
+         "🍎",
+         "📱",
+         "🍏"
+      ]
+   },
+   "os_windows": {
+      "pack": "EmojiStatus",
+      "index": 0,
+      "pack_prefer": "EmojiStatus",
+      "fallback": "🪟",
+      "search": [
+         "🪟",
+         "💻",
+         "🖥",
+         "🖥️"
+      ]
+   },
+   "os_mac": {
+      "pack": "EmojiStatus",
+      "index": 0,
+      "pack_prefer": "EmojiStatus",
+      "fallback": "🍎",
+      "search": [
+         "🍎",
+         "💻",
+         "🖥"
+      ]
+   },
+   "os_linux": {
+      "pack": "EmojiStatus",
+      "index": 0,
+      "pack_prefer": "EmojiStatus",
+      "fallback": "🐧",
+      "search": [
+         "🐧",
+         "🐧"
+      ]
    }
 }
