@@ -3,7 +3,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-RENEWAL_DISCOUNT_PERCENT = 10
+from app.bot.services.renewal_settings import DEFAULT_RENEWAL_DISCOUNT_PERCENT
+
+# Back-compat alias — prefer renewal_settings.load / RenewalSettingsView.
+RENEWAL_DISCOUNT_PERCENT = DEFAULT_RENEWAL_DISCOUNT_PERCENT
 # All subscriptions use a fixed 1-month window; renew adds traffic and resets expiry to 30 days from now.
 SERVICE_MAX_DAYS = 30
 
@@ -13,11 +16,18 @@ class RenewalQuote:
     base_amount: int
     renewal_discount: int
     final_amount: int
+    discount_percent: int
 
 
-def renewal_quote(plan_price: int) -> RenewalQuote:
-    """Apply the default renewal discount to a plan list price (Toman)."""
+def renewal_quote(plan_price: int, discount_percent: int | None = None) -> RenewalQuote:
+    """Apply renewal discount to a plan list price (Toman)."""
     base = max(0, int(plan_price))
-    discount = base * RENEWAL_DISCOUNT_PERCENT // 100
+    pct = DEFAULT_RENEWAL_DISCOUNT_PERCENT if discount_percent is None else max(0, min(100, int(discount_percent)))
+    discount = base * pct // 100
     final = max(0, base - discount)
-    return RenewalQuote(base_amount=base, renewal_discount=discount, final_amount=final)
+    return RenewalQuote(
+        base_amount=base,
+        renewal_discount=discount,
+        final_amount=final,
+        discount_percent=pct,
+    )

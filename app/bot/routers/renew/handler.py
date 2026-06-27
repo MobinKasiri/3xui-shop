@@ -1,4 +1,4 @@
-"""Renew existing VPN config (+GB/+days) with automatic 10% discount."""
+"""Renew existing VPN config — add traffic and refresh duration with panel discount."""
 from __future__ import annotations
 
 import json
@@ -12,6 +12,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
+from app.bot.services.renewal_settings import renewal_settings_for_config
 from app.bot.services.tx_admin_notify import (
     actor_from_callback,
     dispatch_tx_to_admins,
@@ -27,7 +28,7 @@ from app.bot.utils.payment_keyboard import card_payment_keyboard
 from app.bot.utils.persian import format_toman, to_persian_digits
 from app.bot.utils.plans_display import render_plans_table
 from app.bot.utils.receipt_storage import persist_receipt_photo, receipt_file_id
-from app.bot.utils.renewal_pricing import RENEWAL_DISCOUNT_PERCENT, SERVICE_MAX_DAYS, renewal_quote
+from app.bot.utils.renewal_pricing import SERVICE_MAX_DAYS, renewal_quote
 from app.bot.utils.emoji import strip_html_emoji
 from app.db.models import User, VPNConfig
 from app.db.models.transaction import (
@@ -48,8 +49,12 @@ class RenewStates(StatesGroup):
     awaiting_receipt = State()
 
 
-def _renew_plan_label(plan: dict) -> str:
-    quote = renewal_quote(int(plan["price"]))
+def _renew_discount_pct(config_obj) -> int:
+    return renewal_settings_for_config(config_obj).discount_percent
+
+
+def _renew_plan_label(plan: dict, discount_pct: int) -> str:
+    quote = renewal_quote(int(plan["price"]), discount_pct)
     emoji = strip_html_emoji(str(plan.get("emoji", "")))
     lead = f"{emoji} " if emoji else ""
     return fa.RENEW_PLAN_BTN.format(
@@ -60,21 +65,24 @@ def _renew_plan_label(plan: dict) -> str:
     )
 
 
-def notif_action_keyboard(config_id: int) -> InlineKeyboardMarkup:
+def notif_action_keyboard(config_id: int, *, discount_pct: int) -> InlineKeyboardMarkup:
     """Expiry/traffic warnings: renew (discounted) or buy new."""
+    renew_label = fa.NOTIF_RENEW_BTN.format(
+        discount_pct=to_persian_digits(discount_pct),
+    )
     return (
         K()
-        .success(fa.NOTIF_RENEW_BTN, callback_data=f"renew:start:{config_id}", icon="btn_buy")
+        .success(renew_label, callback_data=f"renew:start:{config_id}", icon="btn_buy")
         .btn(fa.NOTIF_NEW_CONFIG_BTN, callback_data="menu:buy")
         .adjust(1)
         .as_markup()
     )
 
 
-def _plans_keyboard(plans: list[dict], config_id: int) -> InlineKeyboardMarkup:
+def _plans_keyboard(plans: list[dict], config_id: int, discount_pct: int) -> InlineKeyboardMarkup:
     kb = K()
     for plan in plans:
-        label = _renew_plan_label(plan)
+        label = _renew_plan_label(plan, discount_pct)
         cb = f"renew:plan:{plan['id']}"
         if plan.get("recommended"):
             kb.primary(label, callback_data=cb)
@@ -155,15 +163,16 @@ async def start_renew_flow(
 
     await state.clear()
     await state.set_state(RenewStates.plan)
-    await state.update_data(config_id=config_id, service_name=cfg.service_name)
+    discount_pct = _renew_discount_pct(config_obj)
+    await state.update_data(config_id=config_id, service_name=cfg.service_name, discount_pct=discount_pct)
 
     header = fa.RENEW_PLANS_HEADER.format(
         name=cfg.service_name,
-        discount_pct=to_persian_digits(RENEWAL_DISCOUNT_PERCENT),
+        discount_pct=to_persian_digits(discount_pct),
         max_days=to_persian_digits(SERVICE_MAX_DAYS),
     )
     text = f"{header}\n\n{_render_plans_text(tier, plans)}"
-    markup = _plans_keyboard(plans, config_id)
+    markup = _plans_keyboard(plans, config_id, discount_pct)
 
     if isinstance(target, CallbackQuery):
         await target.message.edit_text(text, reply_markup=markup)
@@ -227,13 +236,15 @@ async def cb_renew_select_plan(
         await callback.answer(fa.ERRORS["not_found"], show_alert=True)
         return
 
-    quote = renewal_quote(int(plan["price"]))
+    discount_pct = int(data.get("discount_pct") or _renew_discount_pct(config))
+    quote = renewal_quote(int(plan["price"]), discount_pct)
     await state.update_data(
         plan_id=plan_id,
         plan=plan,
         base_amount=quote.base_amount,
         renewal_discount=quote.renewal_discount,
         final_amount=quote.final_amount,
+        discount_pct=discount_pct,
     )
     await state.set_state(RenewStates.payment_method)
 
@@ -241,7 +252,7 @@ async def cb_renew_select_plan(
         name=cfg.service_name,
         gb=to_persian_digits(plan["gb"]),
         max_days=to_persian_digits(SERVICE_MAX_DAYS),
-        discount_pct=to_persian_digits(RENEWAL_DISCOUNT_PERCENT),
+        discount_pct=to_persian_digits(discount_pct),
         discount=format_toman(quote.renewal_discount),
         amount=format_toman(quote.final_amount),
     )
@@ -312,6 +323,7 @@ async def cb_renew_pay_wallet(
         plan_name=plan.get("tier_name", "VIP"),
         name=cfg.service_name,
     )
+    discount_pct = int(data.get("discount_pct") or 0)
     try:
         await deduct(
             session,
@@ -323,7 +335,7 @@ async def cb_renew_pay_wallet(
             config_id=cfg.id,
             service_name=cfg.service_name,
             quantity=1,
-            discount_code=f"renew-{RENEWAL_DISCOUNT_PERCENT}pct",
+            discount_code=f"renew-{discount_pct}pct",
             discount_amount=int(data.get("renewal_discount", 0)),
         )
     except ValueError:
@@ -404,6 +416,7 @@ async def _create_pending_renew_tx(
         name=service_name,
     )
     receipt_photo = receipt_file_id(message)
+    discount_pct = int(data.get("discount_pct") or 0)
 
     tx = await Transaction.create(
         session,
@@ -418,7 +431,7 @@ async def _create_pending_renew_tx(
         service_name=service_name,
         payment_method=PAY_CARD,
         payment_receipt=receipt_photo,
-        discount_code=f"renew-{RENEWAL_DISCOUNT_PERCENT}pct",
+        discount_code=f"renew-{discount_pct}pct",
         discount_amount=int(data.get("renewal_discount", 0)),
         status=TX_PENDING,
     )
@@ -439,7 +452,7 @@ async def _create_pending_renew_tx(
                 "plan_name": plan.get("tier_name", "VIP"),
                 "service_name": service_name,
                 "amount": payment_amount,
-                "discount": f"{RENEWAL_DISCOUNT_PERCENT}% (-{format_toman(int(data.get('renewal_discount', 0)))} ت)",
+                "discount": f"{discount_pct}% (-{format_toman(int(data.get('renewal_discount', 0)))} ت)",
                 "datetime": to_jalali_full(dt),
             },
         )

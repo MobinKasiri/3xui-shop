@@ -14,8 +14,9 @@ from app.bot.i18n import fa
 from app.bot.utils.jalali import days_until, to_jalali
 from app.bot.utils.persian import to_persian_digits
 from app.bot.utils.progress import format_gb
+from app.bot.services.renewal_settings import load_renewal_settings
 from app.bot.routers.renew.handler import notif_action_keyboard
-from app.bot.utils.renewal_pricing import RENEWAL_DISCOUNT_PERCENT, SERVICE_MAX_DAYS
+from app.bot.utils.renewal_pricing import SERVICE_MAX_DAYS
 from app.db.models import VPNConfig
 from app.db.models.notification_log import NOTIF_EXPIRY, NotificationLog
 
@@ -57,15 +58,16 @@ async def run_expiry_check(
                 continue
 
             remaining_gb = config.traffic_remaining_bytes / (1024 ** 3)
+            renewal_pct = int(load_renewal_settings().get("discount_percent", 10))
             text = fa.NOTIF_EXPIRY_WARNING.format(
                 name=config.service_name,
                 expiry=to_jalali(expiry),
                 days=to_persian_digits(days_left),
                 remaining_gb=to_persian_digits(f"{remaining_gb:.1f}"),
-                discount_pct=to_persian_digits(RENEWAL_DISCOUNT_PERCENT),
+                discount_pct=to_persian_digits(renewal_pct),
                 max_days=to_persian_digits(SERVICE_MAX_DAYS),
             )
-            markup = notif_action_keyboard(config.id)
+            markup = notif_action_keyboard(config.id, discount_pct=renewal_pct)
 
             try:
                 await bot.send_message(

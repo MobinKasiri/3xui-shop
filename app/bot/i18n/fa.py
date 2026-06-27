@@ -348,7 +348,7 @@ CONFIG_BTN_DELETE = "حذف کانفیگ"
 CONFIG_BTN_RESET_SUB = "تغییر لینک ساب"
 CONFIG_BTN_QR = "ساب QR"
 CONFIG_BTN_COPY_SUB = "کپی لینک اشتراک"
-CONFIG_BTN_RENEW = "تمدید سرویس (۱۰٪ تخفیف)"
+CONFIG_BTN_RENEW = "تمدید سرویس ({discount_pct}٪ تخفیف)"
 
 RENEW_PLANS_HEADER = (
     f"{p('refresh')}<b>تمدید سرویس: {{name}}</b>\n\n"
@@ -644,7 +644,7 @@ NOTIF_TRAFFIC_WARNING = (
     f"{p('chart')}مصرف: {{used_gb}} از {{total_gb}} گیگ ({{pct}}٪)\n\n"
     f"{p('gift')}<b>تمدید با {{discount_pct}}٪ تخفیف</b> — حجم افزایش + مهلت {{max_days}} روز از الان."
 )
-NOTIF_RENEW_BTN = "تمدید با ۱۰٪ تخفیف"
+NOTIF_RENEW_BTN = "تمدید با {discount_pct}٪ تخفیف"
 NOTIF_NEW_CONFIG_BTN = "خرید سرویس جدید"
 
 # ─── Misc UI strings ─────────────────────────────────────────────────────────

@@ -19,6 +19,7 @@ from app.bot.utils.keyboards import K
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
+from app.bot.services.renewal_settings import renewal_settings_for_config
 from app.bot.services.vpn import VPNService
 from app.bot.services.xui_api import XUIError
 from app.bot.utils.emoji import plain_alert_text
@@ -98,10 +99,10 @@ def _sub_copy_keyboard(sub_url: str, cid: int) -> InlineKeyboardMarkup:
     )
 
 
-def _detail_keyboard(config_id: int, is_active: bool) -> InlineKeyboardMarkup:
+def _detail_keyboard(config_id: int, is_active: bool, *, renew_label: str) -> InlineKeyboardMarkup:
     cid = config_id
     kb = K()
-    kb.primary(fa.CONFIG_BTN_RENEW, callback_data=f"renew:start:{cid}", icon="btn_buy")
+    kb.primary(renew_label, callback_data=f"renew:start:{cid}", icon="btn_buy")
     kb.btn(fa.CONFIG_BTN_USAGE, callback_data=f"cfg:status:{cid}", icon="chart")
     kb.btn(fa.CONFIG_BTN_QR, callback_data=f"cfg:qr:{cid}", icon="link")
     kb.btn(fa.CONFIG_BTN_GET_CONFIGS, callback_data=f"cfg:links:{cid}", icon="copy")
@@ -169,9 +170,14 @@ async def _send_detail(
     vpn: VPNService | None,
     *,
     edit: bool = True,
+    bot_config=None,
 ) -> None:
+    discount_pct = renewal_settings_for_config(bot_config).discount_percent
+    renew_label = fa.CONFIG_BTN_RENEW.format(
+        discount_pct=to_persian_digits(discount_pct),
+    )
     text, _, _, _ = await _detail_text(vpn, cfg)
-    markup = _detail_keyboard(cfg.id, cfg.is_active)
+    markup = _detail_keyboard(cfg.id, cfg.is_active, renew_label=renew_label)
     msg = target.message if isinstance(target, CallbackQuery) else target
     try:
         if edit:
@@ -194,7 +200,7 @@ async def cb_open_config(
         await _alert(callback, fa.ERRORS["config_not_found"])
         return
     vpn: VPNService | None = kwargs.get("vpn_service")
-    await _send_detail(callback, cfg, vpn, edit=True)
+    await _send_detail(callback, cfg, vpn, edit=True, bot_config=kwargs.get("config"))
 
 
 # ── status (usage + traffic) ─────────────────────────────────────────────────
@@ -340,7 +346,7 @@ async def cb_toggle(
         callback,
         fa.CONFIG_ENABLED if new_state else fa.CONFIG_DISABLED,
     )
-    await _send_detail(callback, cfg, vpn, edit=True)
+    await _send_detail(callback, cfg, vpn, edit=True, bot_config=kwargs.get("config"))
 
 
 # ── reset subscription ───────────────────────────────────────────────────────
@@ -371,7 +377,7 @@ async def cb_reset_sub(
         disable_web_page_preview=True,
     )
     await callback.answer()
-    await _send_detail(callback, cfg, vpn, edit=True)
+    await _send_detail(callback, cfg, vpn, edit=True, bot_config=kwargs.get("config"))
 
 
 # ── QR ───────────────────────────────────────────────────────────────────────
