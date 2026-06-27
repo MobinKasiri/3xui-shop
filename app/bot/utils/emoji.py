@@ -127,7 +127,22 @@ def p(key: str) -> str:
 
 
 def strip_html_emoji(text: str) -> str:
+    """Remove tg-emoji HTML — invalid inside inline-keyboard button labels."""
     return _TG_EMOJI_RE.sub("", text).strip()
+
+
+def plain_alert_text(text: str) -> str:
+    """Telegram callback alerts are plain text only — strip HTML and custom emoji tags."""
+    import html
+
+    text = re.sub(r"<tg-emoji[^>]*>(.*?)</tg-emoji>", r"\1", text, flags=re.DOTALL)
+    text = re.sub(r"<[^>]+>", "", text)
+    return html.unescape(text).strip()
+
+
+def plain_share_text(text: str) -> str:
+    """Plain text for t.me/share/url — Telegram shows HTML tags literally there."""
+    return plain_alert_text(text)
 
 
 def _strip_leading_emoji(text: str, marker: str) -> str:
