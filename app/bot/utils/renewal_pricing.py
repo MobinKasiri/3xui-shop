@@ -7,7 +7,7 @@ from app.bot.services.renewal_settings import DEFAULT_RENEWAL_DISCOUNT_PERCENT
 
 # Back-compat alias — prefer renewal_settings.load / RenewalSettingsView.
 RENEWAL_DISCOUNT_PERCENT = DEFAULT_RENEWAL_DISCOUNT_PERCENT
-# All subscriptions use a fixed 1-month window; renew adds traffic and resets expiry to 30 days from now.
+# All subscriptions use a fixed 1-month window; renew adds traffic and resets duration (first-use when enabled).
 SERVICE_MAX_DAYS = 30
 
 

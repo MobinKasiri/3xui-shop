@@ -356,14 +356,14 @@ RENEW_PLANS_HEADER = (
     "همان لینک اشتراک حفظ می‌شود.\n\n"
     f"{p('info')}با تمدید:\n"
     f"• <b>حجم پلن به سرویس اضافه می‌شود</b>\n"
-    f"• <b>مهلت سرویس به {{max_days}} روز از الان</b> به‌روز می‌شود\n\n"
+    f"• <b>مهلت {{max_days}} روز</b> پس از اولین اتصال (شمارش از اولین استفاده)\n\n"
     "یک پلن (حجم) انتخاب کنید:"
 )
 RENEW_PLAN_BTN = "{lead}+ {gb} گیگ — {price} (قبل: {was_price})"
 RENEW_PAYMENT_HEADER = (
     f"{p('refresh')}<b>تمدید {{name}}</b>\n\n"
     f"{p('battery')}حجم اضافه: <b>+{{gb}} گیگ</b>\n"
-    f"{p('clock')}مهلت سرویس: <b>{{max_days}} روز</b> از الان (به‌روزرسانی)\n"
+    f"{p('clock')}مهلت: <b>{{max_days}} روز</b> پس از اولین اتصال\n"
     f"{p('ticket')}تخفیف تمدید {{discount_pct}}٪: <b>-{{discount}}</b> ت\n"
     f"{p('wallet')}مبلغ نهایی: <b>{{amount}}</b> ت\n\n"
     "روش پرداخت را انتخاب کنید:"
@@ -371,8 +371,8 @@ RENEW_PAYMENT_HEADER = (
 RENEW_SUCCESS = (
     f"{p('confirm')}<b>سرویس «{{name}}» تمدید شد!</b>\n\n"
     f"{p('battery')}حجم شما <b>+{{gb}} گیگ</b> افزایش یافت.\n"
-    f"{p('clock')}مهلت سرویس به <b>{{max_days}} روز</b> از الان به‌روز شد "
-    f"(انقضا: <b>{{expiry}}</b>)\n\n"
+    f"{p('clock')}مهلت: <b>{{max_days}} روز</b> پس از اولین اتصال (تازه‌سازی)\n"
+    f"{p('info')}{{expiry_note}}\n\n"
     f"{p('link')}لینک اشتراک <b>تغییر نکرده</b> — همان لینک قبلی را در اپ استفاده کنید.\n"
     "<code>{sub_url}</code>"
 )
@@ -636,13 +636,13 @@ NOTIF_EXPIRY_WARNING = (
     f"{p('tag')}نام: {{name}}\n"
     f"{p('clock')}انقضا: {{expiry}} ({{days}} روز دیگر)\n"
     f"{p('chart')}حجم باقیمانده: {{remaining_gb}} گیگ\n\n"
-    f"{p('gift')}<b>تمدید با {{discount_pct}}٪ تخفیف</b> — حجم افزایش + مهلت {{max_days}} روز از الان."
+    f"{p('gift')}<b>تمدید با {{discount_pct}}٪ تخفیف</b> — حجم افزایش + {{max_days}} روز پس از اولین اتصال."
 )
 NOTIF_TRAFFIC_WARNING = (
     f"{p('warning')}<b>حجم سرویس شما رو به اتمام است!</b>\n\n"
     f"{p('tag')}نام: {{name}}\n"
     f"{p('chart')}مصرف: {{used_gb}} از {{total_gb}} گیگ ({{pct}}٪)\n\n"
-    f"{p('gift')}<b>تمدید با {{discount_pct}}٪ تخفیف</b> — حجم افزایش + مهلت {{max_days}} روز از الان."
+    f"{p('gift')}<b>تمدید با {{discount_pct}}٪ تخفیف</b> — حجم افزایش + {{max_days}} روز پس از اولین اتصال."
 )
 NOTIF_RENEW_BTN = "تمدید با {discount_pct}٪ تخفیف"
 NOTIF_NEW_CONFIG_BTN = "خرید سرویس جدید"

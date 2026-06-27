@@ -325,10 +325,11 @@ class VPNService:
         *,
         plan_id: str,
         plan_gb: int,
-        plan_days: int = 0,  # ignored — renew always applies SERVICE_MAX_DAYS from now
+        plan_days: int = 0,  # ignored — renew always applies SERVICE_MAX_DAYS
     ) -> VPNConfig:
         """
-        Renew: add plan GB to quota and reset expiry to SERVICE_MAX_DAYS from now.
+        Renew: add plan GB and reset duration to SERVICE_MAX_DAYS.
+        With start_after_first_use: negative expiry (clock starts on first connection).
         Preserves UUID, sub_id, and inbounds (same sub link).
         """
         email = config.panel_email
@@ -346,7 +347,7 @@ class VPNService:
             if traffic_before.total > 0
             else add_bytes
         )
-        fresh_expiry_ms = add_days_ms(0, SERVICE_MAX_DAYS)
+        fresh_expiry_ms = self._renew_expiry_ms()
 
         traffic_after = await self._apply_renew_panel_state(
             email,
@@ -374,24 +375,35 @@ class VPNService:
             "plan_days": SERVICE_MAX_DAYS,
             "is_active": True,
             "traffic_used_bytes": traffic_after.used_bytes,
-            "expiry_date": ms_to_datetime(traffic_after.expiry_time),
         }
         if traffic_after.total > 0:
             updates["traffic_limit_bytes"] = traffic_after.total
         elif add_bytes > 0:
             updates["traffic_limit_bytes"] = config.traffic_limit_bytes + add_bytes
+        if is_delayed_start(traffic_after.expiry_time):
+            updates["expiry_date"] = None
+        elif traffic_after.expiry_time > 0:
+            updates["expiry_date"] = ms_to_datetime(traffic_after.expiry_time)
 
         await VPNConfig.update(session, config.id, **updates)
         for k, v in updates.items():
             setattr(config, k, v)
+        expiry_mode = "first_use" if self.start_after_first_use else "from_now"
         logger.info(
-            "Renewed config %s (%s): +%sGB, expiry reset to %sd from now",
+            "Renewed config %s (%s): +%sGB, expiry reset to %sd (%s)",
             config.id,
             config.service_name,
             plan_gb,
             SERVICE_MAX_DAYS,
+            expiry_mode,
         )
         return config
+
+    def _renew_expiry_ms(self) -> int:
+        """Panel expiry after renew — delayed start when enabled (negative ms)."""
+        if self.start_after_first_use:
+            return start_after_first_use_ms(SERVICE_MAX_DAYS)
+        return add_days_ms(0, SERVICE_MAX_DAYS)
 
     async def _apply_renew_panel_state(
         self,
@@ -404,7 +416,7 @@ class VPNService:
     ) -> ClientTraffic:
         """
         One atomic clients/update (traffic + expiry), then sync inbounds and verify.
-        Converts delayed-start (negative expiry) clients to a fresh 30-day window.
+        Re-applies start-after-first-use (negative expiry) when configured.
         """
         vless_uuid = extract_vless_uuid(record)
         inbound_ids = self.xui.inbound_ids_from_record(record)
@@ -443,7 +455,7 @@ class VPNService:
 
             logger.warning(
                 "Renew verify retry for %s (attempt %s): total=%s expiry=%s "
-                "(want total>=%s positive expiry~%s)",
+                "(want total>=%s expiry~%s)",
                 email,
                 attempt + 1,
                 traffic.total,
@@ -464,9 +476,12 @@ class VPNService:
         expected_total: int,
         expected_expiry_ms: int,
     ) -> bool:
-        if is_delayed_start(traffic.expiry_time):
-            return False
         if traffic.total < expected_total:
+            return False
+        if is_delayed_start(expected_expiry_ms):
+            if not is_delayed_start(traffic.expiry_time):
+                return False
+        elif is_delayed_start(traffic.expiry_time):
             return False
         return abs(traffic.expiry_time - expected_expiry_ms) <= RENEW_EXPIRY_TOLERANCE_MS
 

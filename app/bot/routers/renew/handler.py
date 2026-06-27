@@ -53,6 +53,12 @@ def _renew_discount_pct(config_obj) -> int:
     return renewal_settings_for_config(config_obj).discount_percent
 
 
+def _renew_expiry_note(cfg: VPNConfig) -> str:
+    if cfg.expiry_date:
+        return f"انقضا: {to_jalali(cfg.expiry_date)}"
+    return fa.DELAYED_START_FMT.format(n=to_persian_digits(SERVICE_MAX_DAYS))
+
+
 def _renew_plan_label(plan: dict, discount_pct: int) -> str:
     quote = renewal_quote(int(plan["price"]), discount_pct)
     emoji = strip_html_emoji(str(plan.get("emoji", "")))
@@ -490,7 +496,7 @@ async def _send_renew_success(
         name=cfg.service_name,
         gb=to_persian_digits(plan.get("gb", 0)),
         max_days=to_persian_digits(SERVICE_MAX_DAYS),
-        expiry=expiry,
+        expiry_note=_renew_expiry_note(cfg),
         sub_url=sub_url,
     )
     markup = (
@@ -600,7 +606,7 @@ async def cb_admin_approve_renew(
                 name=cfg.service_name,
                 gb=to_persian_digits(plan.get("gb", 0)),
                 max_days=to_persian_digits(SERVICE_MAX_DAYS),
-                expiry=to_jalali(cfg.expiry_date) if cfg.expiry_date else fa.CONFIG_NOT_STARTED,
+                expiry_note=_renew_expiry_note(cfg),
                 sub_url=vpn.sub_url(cfg.subscription_id),
             ),
             parse_mode="HTML",
