@@ -18,7 +18,7 @@ The bot uses **only these Telegram sticker packs** (animated vector emoji):
 ```bash
 cd /opt/nexoranode-bot
 
-# 1) Sync sticker IDs from Telegram → emoji_ids.json
+# 1) Sync sticker IDs → repo + live data dir (/opt/nexoranode-data/emoji_ids.json)
 python3 scripts/sync_emoji_packs.py
 
 # 2) Match registry indices by Unicode alt (🇩🇪, 🛒, …)

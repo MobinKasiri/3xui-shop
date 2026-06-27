@@ -54,19 +54,27 @@ async def on_startup(bot: Bot, config: Config, db: Database, **kwargs) -> None:
         count_loaded,
         custom_emoji_ready,
         reload_emoji_cache,
+        _ids_file_path,
     )
 
     reload_emoji_cache()
     total, packs = count_loaded()
+    ids_path = _ids_file_path()
     if custom_emoji_ready():
-        logger.info("Custom emoji ready: %s icons from %s packs", total, packs)
+        logger.info(
+            "Custom emoji ready: %s icons from %s packs (source: %s)",
+            total,
+            packs,
+            ids_path,
+        )
         logger.info(
             "Button vector icons: %s",
             "on" if button_vector_icons_enabled() else "off",
         )
     else:
         logger.warning(
-            "No custom emoji IDs loaded — run: python scripts/sync_emoji_packs.py"
+            "No custom emoji IDs at %s — run: python3 scripts/sync_emoji_packs.py",
+            ids_path,
         )
 
     await setup_commands(bot)

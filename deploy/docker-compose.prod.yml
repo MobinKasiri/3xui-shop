@@ -10,6 +10,8 @@ services:
     env_file: ../.env
     environment:
       PLANS_FILE: /app/data/plans.json
+      EMOJI_IDS_PATH: /app/data/emoji_ids.json
+      BOT_DATA_HOST: /app/data
     stop_signal: SIGINT
     restart: unless-stopped
     depends_on:

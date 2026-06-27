@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from aiogram import Bot
 
 from app.bot.i18n import fa
+from app.bot.utils.emoji import i
 from app.bot.services.referral_settings import referral_settings_for_config
 from app.db.models import DiscountCode, Referral, User
 
@@ -92,7 +93,7 @@ async def grant_friend_welcome(
             await Referral.mark_friend_bonus(session, ref.id)
             await bot.send_message(
                 user.tg_id,
-                f"🎁 <b>هدیه خوش‌آمد NC VPN</b>\n\n{gift_label} به کیف پولت واریز شد.",
+                f"{i('gift')}<b>هدیه خوش‌آمد NC VPN</b>\n\n{gift_label} به کیف پولت واریز شد.",
                 parse_mode="HTML",
             )
             return

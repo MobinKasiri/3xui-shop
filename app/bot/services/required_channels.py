@@ -101,7 +101,7 @@ def parse_required_channels(raw: str) -> tuple[RequiredChannel, ...]:
 def channel_gate_keyboard(channels: tuple[RequiredChannel, ...]) -> InlineKeyboardMarkup:
     kb = K()
     for channel in channels:
-        kb.primary(channel.label, url=channel.url)
+        kb.primary(channel.label, url=channel.url, icon="link")
     return kb.success(fa.CHANNEL_GATE_VERIFY_BTN, callback_data="channel:joined", icon="confirm").adjust(1).as_markup()
 
 

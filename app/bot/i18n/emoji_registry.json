@@ -9,8 +9,8 @@
    "globe": {
       "pack": "tgmacicons",
       "index": 0,
-      "alt": "🌐",
-      "fallback": "🌐"
+      "fallback": "🌐",
+      "alt": "🌐"
    },
    "bolt": {
       "pack": "vector_icons_by_fStikBot",
@@ -45,8 +45,8 @@
    "chart": {
       "pack": "tgmacicons",
       "index": 28,
-      "alt": "📊",
-      "fallback": "📊"
+      "fallback": "📊",
+      "alt": "📊"
    },
    "wallet": {
       "pack": "EmojiStatus",
@@ -69,8 +69,8 @@
    "support": {
       "pack": "tgmacicons",
       "index": 19,
-      "alt": "🎧",
-      "fallback": "🎧"
+      "fallback": "🎧",
+      "alt": "🎧"
    },
    "download": {
       "pack": "tgmacicons",
@@ -87,8 +87,8 @@
    "cart": {
       "pack": "tgmacicons",
       "index": 42,
-      "alt": "🚀",
-      "fallback": "🚀"
+      "fallback": "🛒",
+      "alt": "🛒"
    },
    "gift": {
       "pack": "EmojiStatus",
@@ -105,14 +105,14 @@
    "back": {
       "pack": "tgmacicons",
       "index": 5,
-      "alt": "◀️",
-      "fallback": "◀️"
+      "fallback": "◀️",
+      "alt": "◀️"
    },
    "home": {
       "pack": "tgmacicons",
       "index": 41,
-      "alt": "🏠",
-      "fallback": "🏠"
+      "fallback": "🏠",
+      "alt": "🏠"
    },
    "cancel": {
       "pack": "vector_icons_by_fStikBot",
@@ -141,8 +141,8 @@
    "refresh": {
       "pack": "tgmacicons",
       "index": 34,
-      "alt": "🔄",
-      "fallback": "🔄"
+      "fallback": "🔄",
+      "alt": "🔄"
    },
    "soon": {
       "pack": "vector_icons_by_fStikBot",
@@ -243,8 +243,8 @@
    "link": {
       "pack": "tgmacicons",
       "index": 20,
-      "alt": "🔗",
-      "fallback": "🔗"
+      "fallback": "🔗",
+      "alt": "🔗"
    },
    "tag": {
       "pack": "tgmacicons",
@@ -255,8 +255,8 @@
    "package": {
       "pack": "tgmacicons",
       "index": 39,
-      "alt": "📦",
-      "fallback": "📦"
+      "fallback": "📦",
+      "alt": "📦"
    },
    "ticket": {
       "pack": "EmojiStatus",
@@ -285,14 +285,14 @@
    "play": {
       "pack": "tgmacicons",
       "index": 6,
-      "alt": "▶️",
-      "fallback": "▶️"
+      "fallback": "▶️",
+      "alt": "▶️"
    },
    "pause": {
-      "pack": "vector_icons_by_fStikBot",
+      "pack": "tgmacicons",
       "index": 12,
-      "alt": "⏸",
-      "fallback": "⏸"
+      "fallback": "⏸",
+      "alt": "⏸"
    },
    "infinity": {
       "pack": "tgmacicons",
@@ -315,20 +315,20 @@
    "down": {
       "pack": "tgmacicons",
       "index": 13,
-      "alt": "🔽",
-      "fallback": "🔽"
+      "fallback": "👇",
+      "alt": "👇"
    },
    "faq": {
       "pack": "tgmacicons",
       "index": 21,
-      "alt": "❓",
-      "fallback": "❓"
+      "fallback": "❓",
+      "alt": "❓"
    },
    "chat": {
       "pack": "tgmacicons",
       "index": 22,
-      "alt": "☎︎",
-      "fallback": "☎︎"
+      "fallback": "💬",
+      "alt": "💬"
    },
    "phone": {
       "pack": "tgmacicons",
@@ -375,8 +375,8 @@
    "server": {
       "pack": "tgmacicons",
       "index": 15,
-      "alt": "🖥",
-      "fallback": "🖥"
+      "fallback": "🖥",
+      "alt": "🖥"
    },
    "new_badge": {
       "pack": "vector_icons_by_fStikBot",
@@ -385,60 +385,60 @@
       "fallback": "🆕"
    },
    "btn_buy": {
-      "pack": "vector_icons_by_fStikBot",
+      "pack": "tgmacicons",
       "index": 16,
-      "alt": "🛒",
-      "fallback": "🚀",
-      "btn_fallback": "🛒"
+      "fallback": "🛒",
+      "btn_fallback": "🛒",
+      "alt": "🛒"
    },
    "btn_configs": {
       "pack": "tgmacicons",
       "index": 28,
-      "alt": "📊",
-      "fallback": "📊",
-      "btn_fallback": "📊"
+      "fallback": "📋",
+      "btn_fallback": "📋",
+      "alt": "📋"
    },
    "btn_balance": {
       "pack": "EmojiStatus",
       "index": 2,
-      "alt": "💰",
-      "fallback": "💰",
-      "btn_fallback": "💰"
+      "fallback": "💳",
+      "btn_fallback": "💳",
+      "alt": "💳"
    },
    "btn_account": {
       "pack": "tgmacicons",
       "index": 10,
-      "alt": "👤",
       "fallback": "👤",
-      "btn_fallback": "👤"
+      "btn_fallback": "👤",
+      "alt": "👤"
    },
    "btn_free": {
-      "pack": "vector_icons_by_fStikBot",
+      "pack": "EmojiStatus",
       "index": 36,
-      "alt": "⭐",
-      "fallback": "⭐",
-      "btn_fallback": "⭐"
+      "fallback": "🎁",
+      "btn_fallback": "🎁",
+      "alt": "🎁"
    },
    "btn_support": {
       "pack": "tgmacicons",
       "index": 19,
-      "alt": "🎧",
-      "fallback": "🎧",
-      "btn_fallback": "🎧"
+      "fallback": "💬",
+      "btn_fallback": "💬",
+      "alt": "💬"
    },
    "btn_apps": {
       "pack": "tgmacicons",
       "index": 38,
-      "alt": "📥",
-      "fallback": "📥",
-      "btn_fallback": "📥"
+      "fallback": "📱",
+      "btn_fallback": "📱",
+      "alt": "📱"
    },
    "btn_admin": {
-      "pack": "vector_icons_by_fStikBot",
+      "pack": "tgmacicons",
       "index": 19,
-      "alt": "⚙️",
       "fallback": "⚙️",
-      "btn_fallback": "⚙️"
+      "btn_fallback": "⚙️",
+      "alt": "⚙️"
    },
    "flag_de": {
       "pack": "FlagsPack",
@@ -509,13 +509,13 @@
    "medal": {
       "pack": "EmojiStatus",
       "index": 0,
-      "alt": "🥇",
-      "fallback": "🥇"
+      "fallback": "🥇",
+      "alt": "🥇"
    },
    "diamond": {
       "pack": "EmojiStatus",
       "index": 0,
-      "alt": "💎",
-      "fallback": "💎"
+      "fallback": "💎",
+      "alt": "💎"
    }
 }

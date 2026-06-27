@@ -31,6 +31,7 @@ from app.bot.services.tx_admin_notify import (
 )
 from app.bot.utils.payment_keyboard import card_payment_keyboard
 from app.bot.utils.receipt_storage import persist_receipt_photo
+from app.bot.utils.emoji import u
 from app.bot.utils.jalali import to_jalali, to_jalali_full
 from app.bot.utils.persian import format_toman, normalize_digits, to_persian_digits
 from app.db.models import Transaction, User
@@ -96,7 +97,7 @@ async def show_profile(
 def _amounts_keyboard() -> InlineKeyboardMarkup:
     kb = K()
     for amount in PRESETS:
-        kb.btn(format_toman(amount) + " ت", callback_data=f"wallet:topup:{amount}")
+        kb.btn(format_toman(amount) + " ت", callback_data=f"wallet:topup:{amount}", icon="cash")
     return (
         kb.btn(fa.TOPUP_CUSTOM_BTN, callback_data="wallet:topup:custom", icon="edit")
         .back_to_menu()
@@ -376,7 +377,7 @@ async def cb_admin_approve_wallet(
         )
     except Exception:
         pass
-    await callback.answer("✅ شارژ تایید شد.", show_alert=False)
+    await callback.answer(f"{u('confirm')} شارژ تایید شد.", show_alert=False)
 
 
 @router.callback_query(F.data.startswith("admin:reject_wallet:"))
@@ -424,4 +425,4 @@ async def cb_admin_reject_wallet(
         )
     except Exception:
         pass
-    await callback.answer("❌ رد شد.", show_alert=False)
+    await callback.answer(f"{u('reject')} رد شد.", show_alert=False)

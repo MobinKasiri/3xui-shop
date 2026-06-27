@@ -29,7 +29,7 @@ from app.bot.utils.persian import format_toman, to_persian_digits
 from app.bot.utils.plans_display import render_plans_table
 from app.bot.utils.receipt_storage import persist_receipt_photo, receipt_file_id
 from app.bot.utils.renewal_pricing import SERVICE_MAX_DAYS, renewal_quote
-from app.bot.utils.emoji import strip_html_emoji
+from app.bot.utils.emoji import plan_button_icon, u
 from app.db.models import User, VPNConfig
 from app.db.models.transaction import (
     PAY_CARD,
@@ -61,10 +61,8 @@ def _renew_expiry_note(cfg: VPNConfig) -> str:
 
 def _renew_plan_label(plan: dict, discount_pct: int) -> str:
     quote = renewal_quote(int(plan["price"]), discount_pct)
-    emoji = strip_html_emoji(str(plan.get("emoji", "")))
-    lead = f"{emoji} " if emoji else ""
     return fa.RENEW_PLAN_BTN.format(
-        lead=lead,
+        lead="",
         gb=to_persian_digits(plan["gb"]),
         price=format_toman(quote.final_amount),
         was_price=format_toman(quote.base_amount),
@@ -78,8 +76,8 @@ def notif_action_keyboard(config_id: int, *, discount_pct: int) -> InlineKeyboar
     )
     return (
         K()
-        .success(renew_label, callback_data=f"renew:start:{config_id}", icon="btn_buy")
-        .btn(fa.NOTIF_NEW_CONFIG_BTN, callback_data="menu:buy")
+        .success(renew_label, callback_data=f"renew:start:{config_id}", icon="refresh")
+        .btn(fa.NOTIF_NEW_CONFIG_BTN, callback_data="menu:buy", icon="btn_buy")
         .adjust(1)
         .as_markup()
     )
@@ -90,10 +88,11 @@ def _plans_keyboard(plans: list[dict], config_id: int, discount_pct: int) -> Inl
     for plan in plans:
         label = _renew_plan_label(plan, discount_pct)
         cb = f"renew:plan:{plan['id']}"
+        icon = plan_button_icon(plan)
         if plan.get("recommended"):
-            kb.primary(label, callback_data=cb)
+            kb.primary(label, callback_data=cb, icon=icon)
         else:
-            kb.btn(label, callback_data=cb)
+            kb.btn(label, callback_data=cb, icon=icon)
     return kb.nav(f"cfg:open:{config_id}").adjust(*([1] * len(plans)), 2).as_markup()
 
 
@@ -531,7 +530,7 @@ async def cb_admin_approve_renew(
     if not tx or tx.status != TX_PENDING:
         if tx:
             await refresh_processed_views_if_done(callback.bot, session, config, tx_id)
-        await callback.answer("✅ این تراکنش قبلاً پردازش شده است.", show_alert=True)
+        await callback.answer(f"{u('confirm')} این تراکنش قبلاً پردازش شده است.", show_alert=True)
         return
     if tx.type != TX_RENEW:
         await callback.answer(fa.ERRORS["general"], show_alert=True)
@@ -664,4 +663,4 @@ async def cb_admin_reject_renew(
     except Exception:
         pass
 
-    await callback.answer("❌ رد شد.", show_alert=False)
+    await callback.answer(f"{u('reject')} رد شد.", show_alert=False)

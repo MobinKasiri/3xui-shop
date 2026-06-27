@@ -52,7 +52,7 @@ def _list_keyboard(configs: list[VPNConfig]) -> InlineKeyboardMarkup:
         label = (fa.CONFIG_LIST_ROW if cfg.is_active else fa.CONFIG_LIST_ROW_EXPIRED).format(
             name=cfg.service_name
         )
-        kb.btn(label, callback_data=f"cfg:open:{cfg.id}")
+        kb.btn(label, callback_data=f"cfg:open:{cfg.id}", icon="server")
     return kb.back_to_menu().adjust(1).as_markup()
 
 
@@ -102,13 +102,13 @@ def _sub_copy_keyboard(sub_url: str, cid: int) -> InlineKeyboardMarkup:
 def _detail_keyboard(config_id: int, is_active: bool, *, renew_label: str) -> InlineKeyboardMarkup:
     cid = config_id
     kb = K()
-    kb.primary(renew_label, callback_data=f"renew:start:{cid}", icon="btn_buy")
+    kb.primary(renew_label, callback_data=f"renew:start:{cid}", icon="refresh")
     kb.btn(fa.CONFIG_BTN_USAGE, callback_data=f"cfg:status:{cid}", icon="chart")
     kb.btn(fa.CONFIG_BTN_QR, callback_data=f"cfg:qr:{cid}", icon="link")
     kb.btn(fa.CONFIG_BTN_GET_CONFIGS, callback_data=f"cfg:links:{cid}", icon="copy")
     kb.btn(fa.CONFIG_BTN_GET_SUB, callback_data=f"cfg:sub:{cid}", icon="link")
     toggle_text = fa.CONFIG_BTN_DISABLE if is_active else fa.CONFIG_BTN_ENABLE
-    kb.btn(toggle_text, callback_data=f"cfg:toggle:{cid}", icon="ban" if is_active else "play")
+    kb.btn(toggle_text, callback_data=f"cfg:toggle:{cid}", icon="pause" if is_active else "play")
     kb.btn(fa.CONFIG_BTN_RESET_SUB, callback_data=f"cfg:resetsub:{cid}", icon="refresh")
     kb.danger(fa.CONFIG_BTN_DELETE, callback_data=f"cfg:delete:{cid}", icon="trash")
     return kb.nav("menu:configs").adjust(1, 2, 2, 2, 1, 2).as_markup()

@@ -76,6 +76,38 @@ def fetch_pack(token: str, name: str) -> list[dict]:
     return rows
 
 
+def _load_data_host() -> Path | None:
+    host = os.environ.get("BOT_DATA_HOST", "").strip()
+    if host:
+        return Path(host)
+    env_path = ROOT / ".env"
+    if env_path.is_file():
+        for line in env_path.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, val = line.split("=", 1)
+            if key.strip() == "BOT_DATA_HOST":
+                v = val.strip().strip('"').strip("'")
+                return Path(v) if v else None
+    return None
+
+
+def _write_outputs(result: dict) -> list[Path]:
+    payload = json.dumps(result, ensure_ascii=False, indent=2)
+    paths = [OUT]
+    data_host = _load_data_host()
+    if data_host:
+        live = data_host / "emoji_ids.json"
+        paths.append(live)
+    written: list[Path] = []
+    for path in paths:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(payload, encoding="utf-8")
+        written.append(path)
+    return written
+
+
 def _print_setup_help() -> None:
     print("\nCustom emoji setup checklist:", file=sys.stderr)
     print("  1. Telegram Premium on the BotFather bot OWNER account", file=sys.stderr)
@@ -122,9 +154,10 @@ def main() -> int:
         print(f"{pack}: {len(rows)} emoji ({len(ids)} with IDs)")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2))
+    written = _write_outputs(result)
     total = sum(len(v) for v in result.values())
-    print(f"Wrote {OUT} ({total} icons)")
+    for path in written:
+        print(f"Wrote {path} ({total} icons)")
     print("Next: python3 scripts/auto_map_emoji_registry.py --write")
     return 0
 

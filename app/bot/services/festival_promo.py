@@ -165,7 +165,7 @@ def festival_discount_keyboard_markup(grant: FestivalGrant):
 
     return (
         K()
-        .success("🎉 استفاده از تخفیف جشنواره", callback_data="buy:discount:festival")
+        .success("استفاده از تخفیف جشنواره", callback_data="buy:discount:festival", icon="gift")
         .adjust(1)
         .as_markup()
     )

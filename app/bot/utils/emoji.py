@@ -14,6 +14,22 @@ _I18N = Path(__file__).resolve().parent.parent / "i18n"
 REGISTRY_PATH = _I18N / "emoji_registry.json"
 IDS_PATH = _I18N / "emoji_ids.json"
 
+
+def _ids_file_path() -> Path:
+    """Prefer live synced file on server (/app/data) over baked-in repo copy."""
+    explicit = os.environ.get("EMOJI_IDS_PATH", "").strip()
+    if explicit:
+        return Path(explicit)
+    data_host = os.environ.get("BOT_DATA_HOST", "").strip()
+    if data_host:
+        live = Path(data_host) / "emoji_ids.json"
+        if live.is_file():
+            return live
+    repo = IDS_PATH
+    if repo.is_file():
+        return repo
+    return _I18N / "emoji_ids.example.json"
+
 _TG_EMOJI_RE = re.compile(r"<tg-emoji[^>]*>.*?</tg-emoji>", re.DOTALL)
 
 
@@ -33,10 +49,11 @@ def _registry() -> dict:
 
 @lru_cache(maxsize=1)
 def _ids() -> dict[str, list[dict]]:
+    path = _ids_file_path()
     try:
-        return json.loads(IDS_PATH.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        logger.warning("Invalid emoji_ids.json — run scripts/sync_emoji_packs.py")
+        logger.warning("Invalid or missing %s — run scripts/sync_emoji_packs.py", path)
         return {}
 
 
@@ -229,4 +246,12 @@ def resolve_icon(key: str | None, *, default: str = "globe") -> str:
     if _icon_spec(use):
         return i(use)
     return i(default)
+
+
+def plan_button_icon(plan: dict) -> str:
+    """Consistent vector icon for VIP plan / renew plan buttons."""
+    if plan.get("recommended"):
+        return "star"
+    key = str(plan.get("emoji_key", "")).strip()
+    return key if key and _icon_spec(key) else "package"
 

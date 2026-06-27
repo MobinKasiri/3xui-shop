@@ -36,8 +36,8 @@ from app.bot.utils.discount import record_usage, validate_and_apply
 from app.bot.utils.payment_keyboard import card_payment_keyboard
 from app.bot.utils.receipt_storage import persist_receipt_photo, receipt_file_id
 from app.bot.utils.persian import format_toman, normalize_digits, to_persian_digits
-from app.bot.utils.emoji import strip_html_emoji
-from app.bot.utils.plans_display import render_plans_table
+from app.bot.utils.emoji import plan_button_icon
+from app.bot.utils.emoji import u
 from app.bot.utils.service_name import (
     is_taken,
     numbered_name,
@@ -117,19 +117,9 @@ def _back_home_row() -> tuple[str, str]:
 
 
 def _format_plan_label(plan: dict) -> str:
-    emoji = strip_html_emoji(str(plan.get("emoji", "")))
-    recommended = plan.get("recommended")
-    if recommended:
-        lead = "• "
-        badge = " · (پیشنهادی)"
-    elif emoji:
-        lead = f"{emoji} "
-        badge = ""
-    else:
-        lead = ""
-        badge = ""
+    badge = " · (پیشنهادی)" if plan.get("recommended") else ""
     return fa.VIP_PLAN_BTN.format(
-        lead=lead,
+        lead="",
         gb=to_persian_digits(plan["gb"]),
         price=format_toman(plan["price"]),
         badge=badge,
@@ -155,10 +145,11 @@ def _plans_keyboard(plans: list[dict]) -> InlineKeyboardMarkup:
     for plan in plans:
         label = _format_plan_label(plan)
         cb = f"buy:plan:{plan['id']}"
+        icon = plan_button_icon(plan)
         if plan.get("recommended"):
-            kb.primary(label, callback_data=cb)
+            kb.primary(label, callback_data=cb, icon=icon)
         else:
-            kb.btn(label, callback_data=cb)
+            kb.btn(label, callback_data=cb, icon=icon)
     return kb.nav("buy:type").adjust(*([1] * len(plans)), 2).as_markup()
 
 
@@ -182,7 +173,7 @@ def _discount_choice_keyboard(extra: InlineKeyboardMarkup | None = None) -> Inli
         for row in extra.inline_keyboard:
             kb.row(*row)
     kb.btn(fa.DISCOUNT_HAVE_BTN, callback_data="buy:discount:have", icon="ticket")
-    kb.btn(fa.DISCOUNT_NONE_BTN, callback_data="buy:discount:skip")
+    kb.btn(fa.DISCOUNT_NONE_BTN, callback_data="buy:discount:skip", icon="close")
     kb.nav("buy:back_to_name")
     if extra and extra.inline_keyboard:
         return kb.adjust(1, 1, 1, 2).as_markup()
@@ -961,7 +952,7 @@ async def cb_admin_approve(
         return
     if tx.status != TX_PENDING:
         await refresh_processed_views_if_done(callback.bot, session, config, tx_id)
-        await callback.answer("✅ این تراکنش قبلاً پردازش شده است.", show_alert=True)
+        await callback.answer(f"{u('confirm')} این تراکنش قبلاً پردازش شده است.", show_alert=True)
         return
 
     user = await User.get(session, tx.user_id)
@@ -1125,7 +1116,7 @@ async def cb_admin_reject(
     except Exception:
         pass
 
-    await callback.answer("❌ رد شد.", show_alert=False)
+    await callback.answer(f"{u('reject')} رد شد.", show_alert=False)
 
 
 @router.callback_query(F.data == "cancel_fsm")

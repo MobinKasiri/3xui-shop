@@ -51,10 +51,19 @@ APP_LINKS: dict[str, list[tuple[str, str]]] = {
 }
 
 
+OS_ICONS = {
+    "android": "phone",
+    "ios": "phone",
+    "windows": "server",
+    "mac": "settings",
+    "linux": "server",
+}
+
+
 def _os_picker_keyboard() -> InlineKeyboardMarkup:
     kb = K()
     for os_id, label in fa.APPS_OS_BTN.items():
-        kb.btn(label, callback_data=f"apps:os:{os_id}")
+        kb.btn(label, callback_data=f"apps:os:{os_id}", icon=OS_ICONS.get(os_id, "phone"))
     return kb.back_to_menu().adjust(2, 2, 1, 1).as_markup()
 
 
