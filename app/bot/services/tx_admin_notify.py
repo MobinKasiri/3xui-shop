@@ -79,14 +79,18 @@ async def save_notify_meta(
     )
 
 
+from app.bot.utils.emoji import i
+
+
 def _action_label(action: Action, *, wallet: bool, kind: str = "purchase") -> tuple[str, str]:
     if action == "approved":
+        icon = i("confirm")
         if wallet:
-            return ("✅", "شارژ تایید شد")
+            return (icon, "شارژ تایید شد")
         if kind == "renew":
-            return ("✅", "تمدید تایید شد")
-        return ("✅", "تایید و فعال‌سازی شد")
-    return ("❌", "رد شد")
+            return (icon, "تمدید تایید شد")
+        return (icon, "تایید و فعال‌سازی شد")
+    return (i("reject"), "رد شد")
 
 
 def _build_pending_renew_caption(payload: dict[str, Any]) -> str:

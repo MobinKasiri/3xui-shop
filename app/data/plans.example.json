@@ -1,14 +1,14 @@
 {
    "vip": {
       "name": "سرویس VIP چند لوکیشن",
-      "emoji": "🌍",
+      "emoji_key": "globe",
       "shop_subtitle": "یک اشتراک — همه سرورها فعال می‌شوند:",
-      "shop_footer": "👇 پلن مورد نظر را انتخاب کنید:",
+      "shop_footer": "",
       "locations": [
-         { "flag": "🇩🇪", "name": "آلمان" },
-         { "flag": "🇵🇱", "name": "لهستان" },
-         { "flag": "🇸🇬", "name": "سنگاپور" },
-         { "flag": "🇺🇸", "name": "آمریکا" }
+         { "code": "de", "name": "آلمان" },
+         { "code": "pl", "name": "لهستان" },
+         { "code": "sg", "name": "سنگاپور" },
+         { "code": "us", "name": "آمریکا" }
       ],
       "plans": [
          {
@@ -17,7 +17,7 @@
             "days": 30,
             "price": 170000,
             "per_gb": 17000,
-            "emoji": ""
+            "emoji_key": ""
          },
          {
             "id": "vip_30g_30d",
@@ -25,7 +25,7 @@
             "days": 30,
             "price": 370000,
             "per_gb": 12333,
-            "emoji": ""
+            "emoji_key": ""
          },
          {
             "id": "vip_60g_30d",
@@ -33,7 +33,7 @@
             "days": 30,
             "price": 490000,
             "per_gb": 8167,
-            "emoji": "⭐",
+            "emoji_key": "star",
             "recommended": true
          },
          {
@@ -42,7 +42,7 @@
             "days": 30,
             "price": 680000,
             "per_gb": 6800,
-            "emoji": "🥇"
+            "emoji_key": "medal"
          },
          {
             "id": "vip_200g_30d",
@@ -50,7 +50,7 @@
             "days": 30,
             "price": 990000,
             "per_gb": 4950,
-            "emoji": "💎"
+            "emoji_key": "diamond"
          }
       ]
    }

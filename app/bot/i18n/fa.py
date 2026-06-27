@@ -2,8 +2,8 @@
 All user-facing Persian strings in one place.
 No string may appear in handlers directly — always import from here.
 
-Custom emoji: app/bot/i18n/emoji_registry.json + emoji_ids.json
-Run: python scripts/sync_emoji_packs.py
+Custom emoji: emoji_registry.json + emoji_ids.json (packs: EmojiStatus, tgmacicons, vector_icons_by_fStikBot, FlagsPack)
+See docs/EMOJI.md — run: python3 scripts/sync_emoji_packs.py && python3 scripts/auto_map_emoji_registry.py --write
 """
 from app.bot.utils.emoji import i, p
 
@@ -66,15 +66,15 @@ WELCOME = (
     "از گزینه‌های زیر یکی رو انتخاب کن:"
 )
 
-# Home menu — emoji baked in (Unicode fallback); vector icon replaces when synced
-MAIN_BTN_BUY = "🛒 خرید سرویس"
-MAIN_BTN_CONFIGS = "📋 مدیریت کانفیگ‌ها"
-MAIN_BTN_BALANCE = "💳 افزایش موجودی"
-MAIN_BTN_ACCOUNT = "👤 حساب کاربری"
-MAIN_BTN_FREE = "🎁 کانفیگ رایگان"
-MAIN_BTN_SUPPORT = "💬 ارتباط با پشتیبانی"
-MAIN_BTN_APPS = "📱 دریافت اپلیکیشن‌ها"
-MAIN_BTN_ADMIN = "⚙️ پنل مدیریت"
+# Home menu — plain labels; icons from emoji_registry via keyboards (vector + Unicode fallback)
+MAIN_BTN_BUY = "خرید سرویس"
+MAIN_BTN_CONFIGS = "مدیریت کانفیگ‌ها"
+MAIN_BTN_BALANCE = "افزایش موجودی"
+MAIN_BTN_ACCOUNT = "حساب کاربری"
+MAIN_BTN_FREE = "کانفیگ رایگان"
+MAIN_BTN_SUPPORT = "ارتباط با پشتیبانی"
+MAIN_BTN_APPS = "دریافت اپلیکیشن‌ها"
+MAIN_BTN_ADMIN = "پنل مدیریت"
 
 CMD_START = "منوی اصلی"
 CMD_BUY = "خرید سرویس"
@@ -142,14 +142,8 @@ BUY_VIP_BTN = "سرویس VIP چند لوکیشن"
 
 VIP_TIER_NAME_DEFAULT = "سرویس VIP چند لوکیشن"
 VIP_PLANS_TABLE_SUBTITLE_DEFAULT = "یک اشتراک — همه سرورها فعال می‌شوند:"
-VIP_PLANS_TABLE_LOCATIONS_DEFAULT = "🇩🇪 آلمان · 🇵🇱 لهستان · 🇸🇬 سنگاپور · 🇺🇸 آمریکا"
 VIP_PLANS_TABLE_FOOTER_DEFAULT = f"{p('down')}پلن مورد نظر را انتخاب کنید:"
 
-VIP_PLANS_TABLE_HEADER = (
-    f"{p('globe')}<b>سرویس VIP چند لوکیشن</b>\n\n"
-    "یک اشتراک — همه سرورها فعال می‌شوند:\n"
-    "🇩🇪 آلمان · 🇵🇱 لهستان · 🇸🇬 سنگاپور · 🇺🇸 آمریکا"
-)
 VIP_PLANS_TABLE_ROW = "  {emoji}{gb} گیگ · {days} روز · <b>{price}</b> تومان{badge}"
 VIP_PLANS_TABLE_FOOTER = f"\n{p('down')}پلن مورد نظر را انتخاب کنید:"
 
@@ -284,7 +278,7 @@ ADMIN_PAYMENT_FWD = (
     f"{p('user')}کاربر: {{name}} (@{{username}})\n"
     f"{p('id_badge')}آیدی: <code>{{tg_id}}</code>\n"
     f"{p('package')}پلن: {{plan_name}}\n"
-    f"🔢 تعداد: {{quantity}}\n"
+    f"{p('chart')}تعداد: {{quantity}}\n"
     f"{p('tag')}نام سرویس: <b>{{service_name}}</b>\n"
     f"{p('wallet')}مبلغ: <b>{{amount}}</b> تومان\n"
     f"{p('ticket')}تخفیف: {{discount}}\n"
@@ -302,15 +296,15 @@ ADMIN_APPROVE_WALLET_BTN = "تایید شارژ"
 ADMIN_REJECT_BTN = "رد کردن"
 ADMIN_TX_PROCESSED_SHORT = (
     "{icon}<b>درخواست #{tx_id} {action_label}</b>\n\n"
-    "👤 توسط: {admin_name} ({admin_ref})\n"
-    "🕐 {processed_at}"
+    f"{p('user')}توسط: {{admin_name}} ({{admin_ref}})\n"
+    f"{p('clock')}{{processed_at}}"
 )
 ADMIN_TX_PROCESSED_SUPER_FOOTER = (
     "\n\n━━━━━━━━━━━━━━━━\n"
     "{icon}<b>{action_label}</b>\n"
-    "👤 مدیر: {admin_name} ({admin_ref})\n"
-    "🆔 آیدی مدیر: <code>{admin_tg_id}</code>\n"
-    "🕐 {processed_at}"
+    f"{p('user')}مدیر: {{admin_name}} ({{admin_ref}})\n"
+    f"{p('id_badge')}آیدی مدیر: <code>{{admin_tg_id}}</code>\n"
+    f"{p('clock')}{{processed_at}}"
 )
 
 # ─── Manage Configs ──────────────────────────────────────────────────────────
@@ -601,7 +595,7 @@ ADMIN_DISCOUNT_CREATED = (
     f"{p('confirm')}<b>کد تخفیف ایجاد شد!</b>\n\n"
     f"{p('ticket')}کد: <code>{{code}}</code>\n"
     f"{p('wallet')}تخفیف: {{value}}\n"
-    f"🔢 حداکثر استفاده: {{max_uses}}\n"
+    f"{p('chart')}حداکثر استفاده: {{max_uses}}\n"
     f"{p('clock')}انقضا: {{expires}}"
 )
 ADMIN_DISCOUNT_LIST_HEADER = f"{p('ticket')}<b>کدهای تخفیف فعال</b>\n"
@@ -609,14 +603,14 @@ ADMIN_DISCOUNT_ROW = (
     "──────────────────\n"
     f"{p('ticket')}<code>{{code}}</code>\n"
     f"{p('wallet')}{{value}}\n"
-    "🔢 {used}/{max_uses}\n"
+    f"{p('chart')}{{used}}/{{max_uses}}\n"
     f"{p('clock')}انقضا: {{expires}}"
 )
 ADMIN_DISCOUNT_NOT_FOUND = f"{p('error')}کد تخفیف پیدا نشد."
 ADMIN_DISCOUNT_DEACTIVATED = f"{p('trash')}کد <code>{{code}}</code> غیرفعال شد."
 ADMIN_DISCOUNT_STATS = (
     f"{p('chart')}<b>آمار کد {{code}}</b>\n\n"
-    "🔢 استفاده شده: {used}/{max_uses}\n"
+    f"{p('chart')}استفاده شده: {{used}}/{{max_uses}}\n"
     f"{p('clock')}ساخته شده: {{created}}\n"
     f"{p('clock')}انقضا: {{expires}}\n"
     "وضعیت: {state}"

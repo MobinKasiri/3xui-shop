@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """Fetch custom emoji IDs from Telegram and write app/bot/i18n/emoji_ids.json.
 
-Requires:
-  - BOT_TOKEN in environment or .env (repo root)
-  - Bot owner account has Telegram Premium
-  - Bot owner added all emoji packs (links printed on failure)
+Allowed packs (bot owner must add all via t.me/addemoji/…):
+  - EmojiStatus
+  - tgmacicons
+  - vector_icons_by_fStikBot
+  - FlagsPack
+
+Requires BOT_TOKEN + Telegram Premium on the BotFather bot owner account.
 
 Usage:
     cd /opt/nexoranode-bot
     python3 scripts/sync_emoji_packs.py
+    python3 scripts/auto_map_emoji_registry.py --write
 """
 from __future__ import annotations
 
@@ -23,17 +27,17 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "app" / "bot" / "i18n" / "emoji_ids.json"
 
 PACKS = (
-    "adapted_gem_pay",
+    "EmojiStatus",
+    "tgmacicons",
     "vector_icons_by_fStikBot",
-    "IconsPack2",
-    "EmojiTechPack",
+    "FlagsPack",
 )
 
 ADD_LINKS = {
-    "adapted_gem_pay": "https://t.me/addemoji/adapted_gem_pay",
+    "EmojiStatus": "https://t.me/addemoji/EmojiStatus",
+    "tgmacicons": "https://t.me/addemoji/tgmacicons",
     "vector_icons_by_fStikBot": "https://t.me/addemoji/vector_icons_by_fStikBot",
-    "IconsPack2": "https://t.me/addemoji/IconsPack2",
-    "EmojiTechPack": "https://t.me/addemoji/EmojiTechPack",
+    "FlagsPack": "https://t.me/addemoji/FlagsPack",
 }
 
 
@@ -74,12 +78,13 @@ def fetch_pack(token: str, name: str) -> list[dict]:
 
 def _print_setup_help() -> None:
     print("\nCustom emoji setup checklist:", file=sys.stderr)
-    print("  1. Telegram Premium on the BotFather bot OWNER account (not channel admin)", file=sys.stderr)
-    print("  2. Log into that account on phone/desktop and add each pack:", file=sys.stderr)
-    for pack, link in ADD_LINKS.items():
+    print("  1. Telegram Premium on the BotFather bot OWNER account", file=sys.stderr)
+    print("  2. Add each pack on that account:", file=sys.stderr)
+    for link in ADD_LINKS.values():
         print(f"     {link}", file=sys.stderr)
-    print("  3. Re-run: python3 scripts/sync_emoji_packs.py", file=sys.stderr)
-    print("  4. Rebuild bot: ./deploy/compose.sh up -d --build bot", file=sys.stderr)
+    print("  3. python3 scripts/sync_emoji_packs.py", file=sys.stderr)
+    print("  4. python3 scripts/auto_map_emoji_registry.py --write", file=sys.stderr)
+    print("  5. ./deploy/compose.sh up -d --build bot", file=sys.stderr)
 
 
 def main() -> int:
@@ -101,14 +106,14 @@ def main() -> int:
             return 1
         except RuntimeError as exc:
             print(exc, file=sys.stderr)
-            if "STICKERSET_INVALID" in str(exc) or "not found" in str(exc).lower():
+            if "STICKERSET_INVALID" in str(exc):
                 print(f"Add pack: {ADD_LINKS.get(pack, pack)}", file=sys.stderr)
             _print_setup_help()
             return 1
         ids = [r["id"] for r in rows if r.get("id")]
         if not ids:
             print(
-                f"{pack}: 0 custom emoji IDs — bot owner needs Premium + add pack: {ADD_LINKS[pack]}",
+                f"{pack}: 0 custom emoji IDs — add: {ADD_LINKS[pack]}",
                 file=sys.stderr,
             )
             _print_setup_help()
@@ -120,7 +125,7 @@ def main() -> int:
     OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2))
     total = sum(len(v) for v in result.values())
     print(f"Wrote {OUT} ({total} icons)")
-    print("Next: git add app/bot/i18n/emoji_ids.json && rebuild bot")
+    print("Next: python3 scripts/auto_map_emoji_registry.py --write")
     return 0
 
 

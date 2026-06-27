@@ -1,5 +1,5 @@
 {
-   "_comment": "Semantic icon keys → sticker pack + index (from getStickerSet order). Re-run scripts/sync_emoji_packs.py after pack updates.",
+   "_comment": "Semantic key → pack + index. Packs: EmojiStatus, tgmacicons, vector_icons_by_fStikBot, FlagsPack. Run sync_emoji_packs.py then auto_map_emoji_registry.py --write. Browse: list_emoji_packs.py",
    "wave": {
       "pack": "vector_icons_by_fStikBot",
       "index": 2,
@@ -7,7 +7,7 @@
       "fallback": "👋"
    },
    "globe": {
-      "pack": "EmojiTechPack",
+      "pack": "tgmacicons",
       "index": 0,
       "alt": "🌐",
       "fallback": "🌐"
@@ -19,7 +19,7 @@
       "fallback": "⚡"
    },
    "handshake": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 45,
       "alt": "🤝",
       "fallback": "🤝"
@@ -43,19 +43,19 @@
       "fallback": "🚀"
    },
    "chart": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 28,
       "alt": "📊",
       "fallback": "📊"
    },
    "wallet": {
-      "pack": "adapted_gem_pay",
+      "pack": "EmojiStatus",
       "index": 2,
       "alt": "💰",
       "fallback": "💰"
    },
    "user": {
-      "pack": "EmojiTechPack",
+      "pack": "tgmacicons",
       "index": 10,
       "alt": "👤",
       "fallback": "👤"
@@ -67,13 +67,13 @@
       "fallback": "⭐"
    },
    "support": {
-      "pack": "EmojiTechPack",
+      "pack": "tgmacicons",
       "index": 19,
       "alt": "🎧",
       "fallback": "🎧"
    },
    "download": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 38,
       "alt": "📥",
       "fallback": "📥"
@@ -85,31 +85,31 @@
       "fallback": "⚙️"
    },
    "cart": {
-      "pack": "EmojiTechPack",
+      "pack": "tgmacicons",
       "index": 42,
       "alt": "🚀",
       "fallback": "🚀"
    },
    "gift": {
-      "pack": "adapted_gem_pay",
+      "pack": "EmojiStatus",
       "index": 8,
       "alt": "🎁",
       "fallback": "🎁"
    },
    "referral": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 45,
       "alt": "🤝",
       "fallback": "🤝"
    },
    "back": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 5,
       "alt": "◀️",
       "fallback": "◀️"
    },
    "home": {
-      "pack": "EmojiTechPack",
+      "pack": "tgmacicons",
       "index": 41,
       "alt": "🏠",
       "fallback": "🏠"
@@ -121,7 +121,7 @@
       "fallback": "❌"
    },
    "confirm": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 33,
       "alt": "✅",
       "fallback": "✅"
@@ -139,7 +139,7 @@
       "fallback": "✖️"
    },
    "refresh": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 34,
       "alt": "🔄",
       "fallback": "🔄"
@@ -151,7 +151,7 @@
       "fallback": "🔜"
    },
    "warning": {
-      "pack": "adapted_gem_pay",
+      "pack": "EmojiStatus",
       "index": 12,
       "alt": "⚠️",
       "fallback": "⚠️"
@@ -163,13 +163,13 @@
       "fallback": "❌"
    },
    "info": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 21,
       "alt": "ℹ️",
       "fallback": "ℹ️"
    },
    "pending": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 36,
       "alt": "⏳",
       "fallback": "⏳"
@@ -181,85 +181,85 @@
       "fallback": "🚫"
    },
    "card": {
-      "pack": "adapted_gem_pay",
+      "pack": "EmojiStatus",
       "index": 0,
       "alt": "💳",
       "fallback": "💳"
    },
    "bank": {
-      "pack": "adapted_gem_pay",
+      "pack": "EmojiStatus",
       "index": 1,
       "alt": "🏦",
       "fallback": "🏦"
    },
    "money": {
-      "pack": "adapted_gem_pay",
+      "pack": "EmojiStatus",
       "index": 3,
       "alt": "💲",
       "fallback": "💲"
    },
    "cash": {
-      "pack": "adapted_gem_pay",
+      "pack": "EmojiStatus",
       "index": 4,
       "alt": "💵",
       "fallback": "💵"
    },
    "copy": {
-      "pack": "adapted_gem_pay",
+      "pack": "EmojiStatus",
       "index": 5,
       "alt": "📋",
       "fallback": "📋"
    },
    "camera": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 25,
       "alt": "📸",
       "fallback": "📸"
    },
    "receipt": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 37,
       "alt": "🧾",
       "fallback": "🧾"
    },
    "clock": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 36,
       "alt": "🕐",
       "fallback": "🕐"
    },
    "battery": {
-      "pack": "EmojiTechPack",
+      "pack": "tgmacicons",
       "index": 33,
       "alt": "🔋",
       "fallback": "🔋"
    },
    "key": {
-      "pack": "adapted_gem_pay",
+      "pack": "EmojiStatus",
       "index": 6,
       "alt": "🔑",
       "fallback": "🔑"
    },
    "link": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 20,
       "alt": "🔗",
       "fallback": "🔗"
    },
    "tag": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 31,
       "alt": "🏷",
       "fallback": "🏷"
    },
    "package": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 39,
       "alt": "📦",
       "fallback": "📦"
    },
    "ticket": {
-      "pack": "adapted_gem_pay",
+      "pack": "EmojiStatus",
       "index": 7,
       "alt": "🎟",
       "fallback": "🎟"
@@ -271,19 +271,19 @@
       "fallback": "🎲"
    },
    "edit": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 39,
       "alt": "✏️",
       "fallback": "✏️"
    },
    "trash": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 40,
       "alt": "🗑",
       "fallback": "🗑"
    },
    "play": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 6,
       "alt": "▶️",
       "fallback": "▶️"
@@ -295,7 +295,7 @@
       "fallback": "⏸"
    },
    "infinity": {
-      "pack": "EmojiTechPack",
+      "pack": "tgmacicons",
       "index": 34,
       "alt": "♾️",
       "fallback": "♾️"
@@ -307,37 +307,37 @@
       "fallback": "💤"
    },
    "up": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 12,
       "alt": "🔼",
       "fallback": "🔼"
    },
    "down": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 13,
       "alt": "🔽",
       "fallback": "🔽"
    },
    "faq": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 21,
       "alt": "❓",
       "fallback": "❓"
    },
    "chat": {
-      "pack": "EmojiTechPack",
+      "pack": "tgmacicons",
       "index": 22,
       "alt": "☎︎",
       "fallback": "☎︎"
    },
    "phone": {
-      "pack": "EmojiTechPack",
+      "pack": "tgmacicons",
       "index": 3,
       "alt": "📲",
       "fallback": "📲"
    },
    "lock": {
-      "pack": "adapted_gem_pay",
+      "pack": "EmojiStatus",
       "index": 9,
       "alt": "🔒",
       "fallback": "🔒"
@@ -355,25 +355,25 @@
       "fallback": "🎉"
    },
    "share": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 38,
       "alt": "📤",
       "fallback": "📤"
    },
    "note": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 31,
       "alt": "📝",
       "fallback": "📝"
    },
    "id_badge": {
-      "pack": "EmojiTechPack",
+      "pack": "tgmacicons",
       "index": 11,
       "alt": "🆔",
       "fallback": "🆔"
    },
    "server": {
-      "pack": "EmojiTechPack",
+      "pack": "tgmacicons",
       "index": 15,
       "alt": "🖥",
       "fallback": "🖥"
@@ -392,21 +392,21 @@
       "btn_fallback": "🛒"
    },
    "btn_configs": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 28,
       "alt": "📊",
       "fallback": "📊",
       "btn_fallback": "📊"
    },
    "btn_balance": {
-      "pack": "adapted_gem_pay",
+      "pack": "EmojiStatus",
       "index": 2,
       "alt": "💰",
       "fallback": "💰",
       "btn_fallback": "💰"
    },
    "btn_account": {
-      "pack": "EmojiTechPack",
+      "pack": "tgmacicons",
       "index": 10,
       "alt": "👤",
       "fallback": "👤",
@@ -420,14 +420,14 @@
       "btn_fallback": "⭐"
    },
    "btn_support": {
-      "pack": "EmojiTechPack",
+      "pack": "tgmacicons",
       "index": 19,
       "alt": "🎧",
       "fallback": "🎧",
       "btn_fallback": "🎧"
    },
    "btn_apps": {
-      "pack": "IconsPack2",
+      "pack": "tgmacicons",
       "index": 38,
       "alt": "📥",
       "fallback": "📥",
@@ -439,5 +439,83 @@
       "alt": "⚙️",
       "fallback": "⚙️",
       "btn_fallback": "⚙️"
+   },
+   "flag_de": {
+      "pack": "FlagsPack",
+      "index": 0,
+      "alt": "🇩🇪",
+      "fallback": "🇩🇪"
+   },
+   "flag_pl": {
+      "pack": "FlagsPack",
+      "index": 0,
+      "alt": "🇵🇱",
+      "fallback": "🇵🇱"
+   },
+   "flag_sg": {
+      "pack": "FlagsPack",
+      "index": 0,
+      "alt": "🇸🇬",
+      "fallback": "🇸🇬"
+   },
+   "flag_us": {
+      "pack": "FlagsPack",
+      "index": 0,
+      "alt": "🇺🇸",
+      "fallback": "🇺🇸"
+   },
+   "flag_ir": {
+      "pack": "FlagsPack",
+      "index": 0,
+      "alt": "🇮🇷",
+      "fallback": "🇮🇷"
+   },
+   "flag_gb": {
+      "pack": "FlagsPack",
+      "index": 0,
+      "alt": "🇬🇧",
+      "fallback": "🇬🇧"
+   },
+   "flag_fr": {
+      "pack": "FlagsPack",
+      "index": 0,
+      "alt": "🇫🇷",
+      "fallback": "🇫🇷"
+   },
+   "flag_nl": {
+      "pack": "FlagsPack",
+      "index": 0,
+      "alt": "🇳🇱",
+      "fallback": "🇳🇱"
+   },
+   "flag_tr": {
+      "pack": "FlagsPack",
+      "index": 0,
+      "alt": "🇹🇷",
+      "fallback": "🇹🇷"
+   },
+   "flag_ae": {
+      "pack": "FlagsPack",
+      "index": 0,
+      "alt": "🇦🇪",
+      "fallback": "🇦🇪"
+   },
+   "flag_ca": {
+      "pack": "FlagsPack",
+      "index": 0,
+      "alt": "🇨🇦",
+      "fallback": "🇨🇦"
+   },
+   "medal": {
+      "pack": "EmojiStatus",
+      "index": 0,
+      "alt": "🥇",
+      "fallback": "🥇"
+   },
+   "diamond": {
+      "pack": "EmojiStatus",
+      "index": 0,
+      "alt": "💎",
+      "fallback": "💎"
    }
 }

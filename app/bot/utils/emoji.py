@@ -181,3 +181,52 @@ def button_vector_icons_enabled() -> bool:
     if raw in ("1", "true", "yes", "on"):
         return True
     return custom_emoji_ready()
+
+
+# ISO / legacy Unicode → registry key (FlagsPack via auto_map)
+_FLAG_UNICODE_TO_KEY: dict[str, str] = {
+    "🇩🇪": "flag_de",
+    "🇵🇱": "flag_pl",
+    "🇸🇬": "flag_sg",
+    "🇺🇸": "flag_us",
+    "🇮🇷": "flag_ir",
+    "🇬🇧": "flag_gb",
+    "🇫🇷": "flag_fr",
+    "🇳🇱": "flag_nl",
+    "🇹🇷": "flag_tr",
+    "🇦🇪": "flag_ae",
+    "🇨🇦": "flag_ca",
+}
+
+
+def flag_registry_key(code_or_flag: str) -> str | None:
+    raw = (code_or_flag or "").strip().lower()
+    if not raw:
+        return None
+    if raw in _FLAG_UNICODE_TO_KEY:
+        return _FLAG_UNICODE_TO_KEY[raw]
+    if raw.startswith("flag_"):
+        return raw if _icon_spec(raw) else None
+    key = f"flag_{raw}"
+    return key if _icon_spec(key) else None
+
+
+def flag_i(code_or_flag: str) -> str:
+    """Custom flag emoji for HTML messages."""
+    key = flag_registry_key(code_or_flag)
+    return i(key) if key else ""
+
+
+def flag_u(code_or_flag: str) -> str:
+    """Unicode / plain flag for button labels and alerts."""
+    key = flag_registry_key(code_or_flag)
+    return u(key) if key else ""
+
+
+def resolve_icon(key: str | None, *, default: str = "globe") -> str:
+    """HTML icon from a registry key (plans.json `emoji_key`)."""
+    use = (key or "").strip() or default
+    if _icon_spec(use):
+        return i(use)
+    return i(default)
+
