@@ -19,142 +19,150 @@ _TG_EMOJI_RE = re.compile(r"<tg-emoji[^>]*>.*?</tg-emoji>", re.DOTALL)
 
 def _enabled() -> bool:
     raw = os.environ.get("USE_CUSTOM_EMOJI", "1").strip().lower()
-    return raw not in {"0", "false", "no", "off"}
+    return raw not in ("0", "false", "no", "off")
 
 
 @lru_cache(maxsize=1)
-def _registry() -> dict[str, dict]:
-    if not REGISTRY_PATH.is_file():
-        return {}
-    return json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+def _registry() -> dict:
+    try:
+        return json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        logger.warning("Invalid emoji_registry.json")
+        return {"icons": {}}
 
 
 @lru_cache(maxsize=1)
-def _pack_ids() -> dict[str, list[dict]]:
-    if not IDS_PATH.is_file():
-        return {}
+def _ids() -> dict[str, list[dict]]:
     try:
         return json.loads(IDS_PATH.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
+    except (OSError, json.JSONDecodeError):
         logger.warning("Invalid emoji_ids.json — run scripts/sync_emoji_packs.py")
         return {}
 
 
 def reload_emoji_cache() -> None:
     _registry.cache_clear()
-    _pack_ids.cache_clear()
+    _ids.cache_clear()
 
 
 def count_loaded() -> tuple[int, int]:
-    packs = _pack_ids()
-    return sum(len(v) for v in packs.values()), len(packs)
+    data = _ids()
+    total = sum(len(v) for v in data.values() if isinstance(v, list))
+    packs = sum(1 for v in data.values() if isinstance(v, list) and v)
+    return total, packs
 
 
-def _spec(key: str) -> dict:
-    spec = _registry().get(key, {})
-    if key.startswith("_") or not spec:
-        return {}
-    return spec
+def custom_emoji_ready() -> bool:
+    total, _ = count_loaded()
+    return _enabled() and total > 0
 
 
-def icon_fallback(key: str) -> str:
-    return str(_spec(key).get("fallback", ""))
-
-
-def btn_icon_fallback(key: str) -> str:
-    """Minimal emoji for main-menu buttons when vector icons are not synced."""
-    spec = _spec(key)
-    if not spec:
-        return ""
-    return str(spec.get("btn_fallback") or spec.get("fallback", ""))
+def _icon_spec(key: str) -> dict | None:
+    data = _registry()
+    spec = data.get(key)
+    if isinstance(spec, dict) and "pack" in spec:
+        return spec
+    icons = data.get("icons")
+    if isinstance(icons, dict):
+        spec = icons.get(key)
+        if isinstance(spec, dict):
+            return spec
+    return None
 
 
 def icon_id(key: str) -> str | None:
     if not _enabled():
         return None
-    spec = _spec(key)
+    spec = _icon_spec(key)
     if not spec:
         return None
-    pack = spec.get("pack", "")
-    index = int(spec.get("index", -1))
-    rows = _pack_ids().get(pack, [])
-    if index < 0 or index >= len(rows):
+    pack = spec.get("pack")
+    idx = spec.get("index")
+    if pack is None or idx is None:
         return None
-    eid = rows[index].get("id") or ""
-    return eid or None
+    rows = _ids().get(pack, [])
+    if not isinstance(rows, list) or idx >= len(rows):
+        return None
+    eid = rows[idx].get("id")
+    return eid if eid else None
 
 
-def i(key: str, fallback: str | None = None) -> str:
-    """HTML vector emoji when synced; otherwise one Unicode emoji (or empty)."""
-    fb = fallback if fallback is not None else icon_fallback(key)
-    eid = icon_id(key)
-    if eid:
-        alt = str(_spec(key).get("alt") or fb or "·")
-        return f'<tg-emoji emoji-id="{eid}">{alt}</tg-emoji>'
-    return fb
+def icon_fallback(key: str) -> str:
+    spec = _icon_spec(key)
+    if not spec:
+        return ""
+    return spec.get("fallback") or spec.get("btn_fallback") or ""
 
 
-def p(key: str) -> str:
-    """Prefix for messages: icon + space, or empty."""
-    s = i(key)
-    return f"{s} " if s else ""
-
-
-def strip_html_emoji(text: str) -> str:
-    """Remove tg-emoji HTML — invalid inside inline-keyboard button labels."""
-    return _TG_EMOJI_RE.sub("", text).strip()
-
-
-def plain_share_text(text: str) -> str:
-    """Plain text for t.me/share/url — Telegram shows HTML tags literally there."""
-    return plain_alert_text(text)
-
-
-def plain_alert_text(text: str) -> str:
-    """Telegram callback alerts are plain text only — strip HTML and custom emoji tags."""
-    import html
-
-    text = re.sub(r"<tg-emoji[^>]*>(.*?)</tg-emoji>", r"\1", text, flags=re.DOTALL)
-    text = re.sub(r"<[^>]+>", "", text)
-    return html.unescape(text).strip()
+def btn_icon_fallback(key: str) -> str:
+    spec = _icon_spec(key)
+    if not spec:
+        return ""
+    return spec.get("btn_fallback") or spec.get("fallback") or ""
 
 
 def u(key: str) -> str:
     """Unicode emoji for buttons (never HTML)."""
-    spec = _spec(key)
-    if not spec:
-        return ""
     if key.startswith("btn_"):
-        return str(spec.get("fallback") or spec.get("btn_fallback") or "")
-    return str(spec.get("fallback") or "")
+        return btn_icon_fallback(key)
+    return icon_fallback(key)
+
+
+def i(key: str) -> str:
+    """Inline custom emoji in HTML messages, or Unicode fallback."""
+    fb = icon_fallback(key)
+    eid = icon_id(key)
+    if eid:
+        return f'<tg-emoji emoji-id="{eid}">{fb or "⭐"}</tg-emoji>'
+    return fb
+
+
+def p(key: str) -> str:
+    """Paragraph prefix: custom emoji + space, or Unicode + space."""
+    fb = icon_fallback(key)
+    eid = icon_id(key)
+    if eid:
+        return f'<tg-emoji emoji-id="{eid}">{fb or "⭐"}</tg-emoji> '
+    return f"{fb} " if fb else ""
+
+
+def strip_html_emoji(text: str) -> str:
+    return _TG_EMOJI_RE.sub("", text).strip()
+
+
+def _strip_leading_emoji(text: str, marker: str) -> str:
+    if not marker:
+        return text.strip()
+    t = text.strip()
+    if t.startswith(marker):
+        return t[len(marker) :].strip()
+    return t
 
 
 def btn_label(key: str | None, text: str) -> str:
-    """Plain button text + Unicode emoji at end (RTL). Never emits HTML."""
-    plain = strip_html_emoji(text)
+    """Button text: vector icon when synced, Unicode emoji prefix otherwise."""
+    text = text.strip()
     if not key:
-        return plain
-    emoji = u(key)
-    if not emoji:
-        return plain
-    if plain.endswith(emoji):
-        return plain
-    if plain.startswith(emoji):
-        plain = plain[len(emoji) :].strip()
-    return f"{plain} {emoji}"
+        return text
+    fb = btn_icon_fallback(key) if key.startswith("btn_") else icon_fallback(key)
+    use_vector = (
+        button_vector_icons_enabled()
+        and custom_emoji_ready()
+        and bool(icon_id(key))
+    )
+    if use_vector:
+        return _strip_leading_emoji(text, fb)
+    plain = _strip_leading_emoji(text, fb)
+    if fb:
+        return f"{fb} {plain}".strip()
+    return text
 
 
 def button_vector_icons_enabled() -> bool:
-    """Vector icons on inline buttons (Bot API 9.4). Off by default."""
-    raw = os.environ.get("USE_BUTTON_VECTOR_ICONS", "0").strip().lower()
-    return raw in {"1", "true", "yes", "on"}
-
-
-class _Emoji:
-    def __getattr__(self, name: str) -> str:
-        if name.startswith("_"):
-            raise AttributeError(name)
-        return i(name)
-
-
-E = _Emoji()
+    """Auto-on when emoji IDs are synced; set USE_BUTTON_VECTOR_ICONS=0 to disable."""
+    raw = os.environ.get("USE_BUTTON_VECTOR_ICONS", "").strip().lower()
+    if raw in ("0", "false", "no", "off"):
+        return False
+    if raw in ("1", "true", "yes", "on"):
+        return True
+    return custom_emoji_ready()

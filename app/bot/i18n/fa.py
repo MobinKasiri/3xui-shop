@@ -66,15 +66,15 @@ WELCOME = (
     "از گزینه‌های زیر یکی رو انتخاب کن:"
 )
 
-# Home menu — plain labels; emoji appended at end via icon= in main_menu_keyboard
-MAIN_BTN_BUY = "خرید سرویس"
-MAIN_BTN_CONFIGS = "مدیریت کانفیگ‌ها"
-MAIN_BTN_BALANCE = "افزایش موجودی"
-MAIN_BTN_ACCOUNT = "حساب کاربری"
-MAIN_BTN_FREE = "کانفیگ رایگان"
-MAIN_BTN_SUPPORT = "ارتباط با پشتیبانی"
-MAIN_BTN_APPS = "دریافت اپلیکیشن‌ها"
-MAIN_BTN_ADMIN = "پنل مدیریت"
+# Home menu — emoji baked in (Unicode fallback); vector icon replaces when synced
+MAIN_BTN_BUY = "🛒 خرید سرویس"
+MAIN_BTN_CONFIGS = "📋 مدیریت کانفیگ‌ها"
+MAIN_BTN_BALANCE = "💳 افزایش موجودی"
+MAIN_BTN_ACCOUNT = "👤 حساب کاربری"
+MAIN_BTN_FREE = "🎁 کانفیگ رایگان"
+MAIN_BTN_SUPPORT = "💬 ارتباط با پشتیبانی"
+MAIN_BTN_APPS = "📱 دریافت اپلیکیشن‌ها"
+MAIN_BTN_ADMIN = "⚙️ پنل مدیریت"
 
 CMD_START = "منوی اصلی"
 CMD_BUY = "خرید سرویس"

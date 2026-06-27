@@ -387,9 +387,9 @@
    "btn_buy": {
       "pack": "vector_icons_by_fStikBot",
       "index": 16,
-      "alt": "🚀",
+      "alt": "🛒",
       "fallback": "🚀",
-      "btn_fallback": "🚀"
+      "btn_fallback": "🛒"
    },
    "btn_configs": {
       "pack": "IconsPack2",
