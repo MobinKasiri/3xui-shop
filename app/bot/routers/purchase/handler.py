@@ -173,7 +173,7 @@ def _discount_choice_keyboard(extra: InlineKeyboardMarkup | None = None) -> Inli
         for row in extra.inline_keyboard:
             kb.row(*row)
     kb.btn(fa.DISCOUNT_HAVE_BTN, callback_data="buy:discount:have", icon="ticket")
-    kb.btn(fa.DISCOUNT_NONE_BTN, callback_data="buy:discount:skip", icon="close")
+    kb.btn(fa.DISCOUNT_NONE_BTN, callback_data="buy:discount:skip", icon="cancel_discount")
     kb.nav("buy:back_to_name")
     if extra and extra.inline_keyboard:
         return kb.adjust(1, 1, 1, 2).as_markup()

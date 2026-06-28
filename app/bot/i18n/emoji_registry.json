@@ -74,9 +74,16 @@
       "fallback": "👤",
       "locked": true
    },
+   "normal": {
+      "pack": "vector_icons_by_fStikBot",
+      "index": 2,
+      "alt": "←",
+      "fallback": "←",
+      "locked": true
+   },
    "star": {
       "pack": "EmojiStatus",
-      "index": 32,
+      "index": 34,
       "alt": "⭐",
       "fallback": "⭐",
       "locked": true
@@ -106,7 +113,7 @@
    },
    "cart": {
       "pack": "EmojiAirdrops",
-      "index": 60,
+      "index": 131,
       "fallback": "🛒",
       "alt": "🛒",
       "pack_prefer": "EmojiStatus",
@@ -128,6 +135,14 @@
       "locked": true
    },
    "back": {
+      "pack": "tgmacicons",
+      "index": 66,
+      "fallback": "◀️",
+      "alt": "◀️",
+      "pack_prefer": "EmojiStatus",
+      "locked": true
+   },
+   "cancel_discount": {
       "pack": "tgmacicons",
       "index": 66,
       "fallback": "◀️",
@@ -632,15 +647,15 @@
    },
    "medal": {
       "pack": "EmojiStatus",
-      "index": 32,
+      "index": 45,
       "fallback": "🥇",
       "alt": "🥇",
       "pack_prefer": "EmojiStatus",
       "locked": true
    },
    "diamond": {
-      "pack": "tgmacicons",
-      "index": 133,
+      "pack": "EmojiStatus",
+      "index": 4,
       "fallback": "💎",
       "alt": "💎",
       "locked": true
