@@ -6,6 +6,7 @@ Allowed packs (bot owner must add all via t.me/addemoji/…):
   - tgmacicons
   - vector_icons_by_fStikBot
   - FlagsPack
+  - NewsEmoji
 
 Requires BOT_TOKEN + Telegram Premium on the BotFather bot owner account.
 
@@ -31,6 +32,7 @@ PACKS = (
     "tgmacicons",
     "vector_icons_by_fStikBot",
     "FlagsPack",
+    "NewsEmoji",
 )
 
 ADD_LINKS = {
@@ -38,6 +40,7 @@ ADD_LINKS = {
     "tgmacicons": "https://t.me/addemoji/tgmacicons",
     "vector_icons_by_fStikBot": "https://t.me/addemoji/vector_icons_by_fStikBot",
     "FlagsPack": "https://t.me/addemoji/FlagsPack",
+    "NewsEmoji": "https://t.me/addemoji/NewsEmoji",
 }
 
 

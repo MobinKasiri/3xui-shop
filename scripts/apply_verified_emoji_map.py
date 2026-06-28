@@ -40,6 +40,9 @@ def main() -> int:
             continue
         pack = vi["pack"]
         index = vi["index"]
+        for field in ("fallback", "alt", "btn_fallback", "search"):
+            if field in vi:
+                reg[key][field] = vi[field]
         if args.check and ids is not None:
             rows = ids.get(pack, [])
             if index >= len(rows) or not rows[index].get("id"):

@@ -1,9 +1,9 @@
 {
   "_comment": "Server-verified pack+index from list_emoji_packs.py (Jun 2026). Merge into emoji_registry.json — do not guess indices.",
-  "wave": { "pack": "vector_icons_by_fStikBot", "index": 2 },
-  "globe": { "pack": "vector_icons_by_fStikBot", "index": 31 },
+  "wave": { "pack": "EmojiStatus", "index": 8, "fallback": "1⃣", "alt": "1⃣" },
+  "globe": { "pack": "EmojiStatus", "index": 32, "fallback": "⭐️", "alt": "⭐️" },
   "bolt": { "pack": "vector_icons_by_fStikBot", "index": 5 },
-  "handshake": { "pack": "vector_icons_by_fStikBot", "index": 83 },
+  "handshake": { "pack": "EmojiStatus", "index": 88, "fallback": "🔧", "alt": "🔧" },
   "rose": { "pack": "vector_icons_by_fStikBot", "index": 44 },
   "fire": { "pack": "vector_icons_by_fStikBot", "index": 7 },
   "rocket": { "pack": "vector_icons_by_fStikBot", "index": 16 },
@@ -64,7 +64,13 @@
   "id_badge": { "pack": "tgmacicons", "index": 2 },
   "server": { "pack": "EmojiStatus", "index": 72 },
   "new_badge": { "pack": "vector_icons_by_fStikBot", "index": 25 },
-  "btn_buy": { "pack": "vector_icons_by_fStikBot", "index": 60 },
+  "btn_buy": {
+    "pack": "NewsEmoji",
+    "index": 3,
+    "fallback": "☄️",
+    "alt": "☄️",
+    "btn_fallback": "☄️"
+  },
   "btn_configs": { "pack": "vector_icons_by_fStikBot", "index": 90 },
   "btn_balance": { "pack": "tgmacicons", "index": 102 },
   "btn_account": { "pack": "tgmacicons", "index": 2 },

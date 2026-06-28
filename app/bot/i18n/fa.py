@@ -2,8 +2,9 @@
 All user-facing Persian strings in one place.
 No string may appear in handlers directly — always import from here.
 
-Custom emoji: emoji_registry.json + emoji_ids.json (packs: EmojiStatus, tgmacicons, vector_icons_by_fStikBot, FlagsPack)
-See docs/EMOJI.md — run: python3 scripts/sync_emoji_packs.py && python3 scripts/auto_map_emoji_registry.py --write
+Custom emoji: emoji_registry.json + emoji_ids.json
+Packs: EmojiStatus, tgmacicons, vector_icons_by_fStikBot, FlagsPack, NewsEmoji
+See docs/EMOJI.md
 """
 from app.bot.utils.emoji import i, p
 

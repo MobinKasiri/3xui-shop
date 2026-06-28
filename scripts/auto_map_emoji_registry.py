@@ -28,6 +28,7 @@ PACKS = (
     "vector_icons_by_fStikBot",
     "tgmacicons",
     "FlagsPack",
+    "NewsEmoji",
 )
 
 KEY_PACK_HINTS: dict[str, str] = {

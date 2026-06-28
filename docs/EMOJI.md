@@ -1,15 +1,16 @@
 # Custom emoji guide (NC VPN bot)
 
-The bot uses **only these Telegram sticker packs** (animated vector emoji):
+The bot uses these Telegram sticker packs (animated vector emoji):
 
 | Pack | Add link | Used for |
 |------|----------|----------|
-| **EmojiStatus** | https://t.me/addemoji/EmojiStatus | Status, payment, badges |
+| **EmojiStatus** | https://t.me/addemoji/EmojiStatus | Welcome text, home, status |
+| **NewsEmoji** | https://t.me/addemoji/NewsEmoji | Buy button (☄️), news-style icons |
 | **tgmacicons** | https://t.me/addemoji/tgmacicons | Mac-style UI icons |
-| **vector_icons_by_fStikBot** | https://t.me/addemoji/vector_icons_by_fStikBot | General UI + home buttons |
+| **vector_icons_by_fStikBot** | https://t.me/addemoji/vector_icons_by_fStikBot | Colorful UI icons |
 | **FlagsPack** | https://t.me/addemoji/FlagsPack | Country flags (VIP locations) |
 
-**Requirements:** Telegram Premium on the **BotFather bot owner** account. Add all four packs on that account before syncing.
+**Requirements:** Telegram Premium on the **BotFather bot owner** account. Add **all** packs on that account, then sync.
 
 ---
 
@@ -18,28 +19,159 @@ The bot uses **only these Telegram sticker packs** (animated vector emoji):
 ```bash
 cd /opt/nexoranode-bot
 
-# 1) Sync sticker IDs → live data dir (/opt/nexoranode-data/emoji_ids.json)
+# 1) Add every pack link above on the bot-owner Telegram app
+# 2) Sync sticker IDs → /opt/nexoranode-data/emoji_ids.json
 python3 scripts/sync_emoji_packs.py
 
-# 2) Rebuild bot (registry indices come from git — do NOT run auto_map on the server)
+# 3) Rebuild
 ./deploy/compose.sh up -d --build bot
 ```
 
-Startup log should show: `Custom emoji ready: N icons from 4 packs`
+Startup log should show: `Custom emoji ready: N icons from 5 packs`
 
-**Server deploy / pull:** use `./deploy/pull.sh` — it resets local edits to `emoji_registry.json`, pulls, then syncs IDs only.
+**Deploy / pull:** `./deploy/pull.sh` (resets local registry edits, pulls git, syncs IDs).
 
-**Dev only** (after changing fallbacks or adding keys):
+---
+
+## How to assign a pack & icon yourself
+
+This is the full workflow — same steps whether you change one icon or add a whole new pack.
+
+### 1. Add the pack on Telegram
+
+Open the link (e.g. https://t.me/addemoji/NewsEmoji) **on the BotFather owner account** → **Add**.
+
+### 2. Register the pack in the bot (new packs only)
+
+Edit `scripts/sync_emoji_packs.py`:
+
+```python
+PACKS = (
+    "EmojiStatus",
+    ...
+    "NewsEmoji",   # ← add short name exactly as in t.me/addemoji/NewsEmoji
+)
+
+ADD_LINKS = {
+    ...
+    "NewsEmoji": "https://t.me/addemoji/NewsEmoji",
+}
+```
+
+Also add `"NewsEmoji": []` to `app/bot/i18n/emoji_ids.example.json`.
+
+### 3. Sync IDs from Telegram
 
 ```bash
 python3 scripts/sync_emoji_packs.py
-python3 scripts/list_emoji_packs.py --pack EmojiStatus --grep 🏠   # browse real indices
-python3 scripts/apply_verified_emoji_map.py --check                # apply curated map
-git add app/bot/i18n/emoji_registry.json scripts/verified_emoji_indices.json
 ```
 
-Do **not** rely on blind `auto_map --write` — sticker `alt` text often differs from Unicode fallbacks.  
-Curated indices live in `scripts/verified_emoji_indices.json` (checked against your 4 packs on the server).
+This writes `emoji_ids.json` (live copy: `/opt/nexoranode-data/emoji_ids.json` on server).
+
+### 4. Find the index for the sticker you want
+
+```bash
+# List whole pack
+python3 scripts/list_emoji_packs.py --pack NewsEmoji
+
+# Filter by Unicode preview (what Telegram stores as alt)
+python3 scripts/list_emoji_packs.py --pack EmojiStatus --grep 1⃣
+python3 scripts/list_emoji_packs.py --pack NewsEmoji --grep ☄
+```
+
+Note the **`idx`** column (0-based). Example:
+
+```
+ idx  alt       id
+--------------------------------------------------------
+   8  1⃣        5794113621940246933    ← use index 8
+  32  ⭐️        5807752501042089473    ← use index 32
+  88  🔧         5823268688874179761    ← use index 88
+   3  ☄️        …                      ← buy button (NewsEmoji)
+```
+
+### 5. Map a semantic key → pack + index
+
+Edit **`app/bot/i18n/emoji_registry.json`** (or `scripts/verified_emoji_indices.json` then run `apply_verified_emoji_map.py`):
+
+```json
+"wave": {
+   "pack": "EmojiStatus",
+   "index": 8,
+   "fallback": "1⃣",
+   "alt": "1⃣",
+   "locked": true
+},
+"btn_buy": {
+   "pack": "NewsEmoji",
+   "index": 3,
+   "fallback": "☄️",
+   "btn_fallback": "☄️",
+   "locked": true
+}
+```
+
+| Field | Meaning |
+|-------|---------|
+| `pack` | Sticker set name (`NewsEmoji`, `EmojiStatus`, …) |
+| `index` | Position in that pack (from step 4) |
+| `fallback` | Unicode placeholder in **messages** before sync / inside `<tg-emoji>` |
+| `btn_fallback` | Unicode placeholder for **buttons** (optional; defaults to `fallback`) |
+| `locked` | Optional — prevents `auto_map` from overwriting your pick |
+
+Apply curated map:
+
+```bash
+python3 scripts/apply_verified_emoji_map.py
+```
+
+### 6. Use the key in code
+
+**Messages** (`app/bot/i18n/fa.py`) — animated emoji in message text:
+
+```python
+from app.bot.utils.emoji import i, p
+
+WELCOME = (
+    f"خوش اومدی! {i('wave')}\n\n"      # inline icon (1⃣)
+    f"{p('globe')}اینجا VPN می‌گیری\n"  # icon + space at line start (⭐️)
+    f"{p('handshake')}پشتیبانی 24/7\n"  # last line icon (🔧)
+)
+```
+
+| Function | When to use |
+|----------|-------------|
+| `i('key')` | Icon **inside** a sentence |
+| `p('key')` | Icon at the **start of a line** (adds trailing space) |
+
+**Buttons** (`keyboards.py` / handlers) — vector icon on inline keyboard:
+
+```python
+.btn(fa.MAIN_BTN_BUY, callback_data="menu:buy", icon="btn_buy")  # ☄️ from NewsEmoji
+```
+
+Button label text stays plain Persian; Telegram draws the animated icon separately.
+
+### 7. Deploy
+
+```bash
+git pull   # or push from dev first
+python3 scripts/sync_emoji_packs.py
+./deploy/compose.sh up -d --build bot
+```
+
+---
+
+## Current home-page mapping (example)
+
+| Line in welcome | Registry key | Pack | Index | Sticker |
+|-----------------|--------------|------|-------|---------|
+| End of title | `wave` | EmojiStatus | 8 | 1⃣ |
+| VPN line | `globe` | EmojiStatus | 32 | ⭐️ |
+| Support line | `handshake` | EmojiStatus | 88 | 🔧 |
+| **Buy button** (not message) | `btn_buy` | NewsEmoji | 3 | ☄️ |
+
+Middle line (`bolt` / ⚡) unchanged unless you edit `bolt` in the registry the same way.
 
 ---
 
@@ -48,119 +180,8 @@ Curated indices live in `scripts/verified_emoji_indices.json` (checked against y
 ```
 emoji_registry.json   ← YOU edit: semantic key → pack + index
 emoji_ids.json        ← AUTO: pack → list of {index, alt, id} from Telegram
-fa.py / handlers      ← use i('wave'), p('wallet'), icon='btn_buy' in keyboards
+fa.py / handlers      ← i('wave'), p('globe'), icon='btn_buy'
 ```
-
-### Semantic keys (examples)
-
-| Key | Where used |
-|-----|------------|
-| `wave`, `globe`, `wallet` | Welcome text, errors (`p('wallet')`) |
-| `btn_buy`, `btn_configs` | Main menu inline buttons |
-| `flag_de`, `flag_us` | VIP location line in shop |
-| `confirm`, `reject` | Admin approve/reject |
-
-Full list: `app/bot/i18n/emoji_registry.json`
-
----
-
-## How to change an icon
-
-### Step 1 — Browse the pack
-
-After sync, list every sticker with its **index** and **alt** (the small Unicode preview Telegram stores):
-
-```bash
-python3 scripts/list_emoji_packs.py
-
-# One pack only:
-python3 scripts/list_emoji_packs.py --pack vector_icons_by_fStikBot
-
-# Find Germany flag:
-python3 scripts/list_emoji_packs.py --pack FlagsPack --grep 🇩🇪
-```
-
-Example output:
-
-```
-## FlagsPack (195 icons)
- idx  alt       id
---------------------------------------------------------
-   0  🇩🇪       1234567890123456789
-   1  🇵🇱       9876543210987654321
-```
-
-### Step 2 — Edit `emoji_registry.json`
-
-Change the **`index`** (and **`pack`** if needed) for the semantic key:
-
-```json
-"btn_buy": {
-   "pack": "vector_icons_by_fStikBot",
-   "index": 16,
-   "fallback": "🛒",
-   "btn_fallback": "🛒"
-}
-```
-
-- **`index`** = row number from `list_emoji_packs.py` (0-based, same order as `getStickerSet`)
-- **`fallback`** / **`btn_fallback`** = Unicode shown **before sync** and inside `<tg-emoji>` as placeholder; auto_map matches by this character
-
-Or re-run auto-map after changing only `fallback`:
-
-```bash
-python3 scripts/auto_map_emoji_registry.py --write
-```
-
-### Step 3 — Rebuild
-
-```bash
-./deploy/compose.sh up -d --build bot
-```
-
-No second sync needed unless the pack itself changed on Telegram.
-
----
-
-## Using icons in code
-
-| Function | Use in |
-|----------|--------|
-| `p('wallet')` | Start of a line in HTML messages → animated icon + space |
-| `i('wave')` | Inline animated icon in HTML |
-| `u('confirm')` | Plain Unicode (popup alerts, button fallback text) |
-| `flag_i('de')` | Flag in HTML (`FlagsPack`) |
-| `icon='btn_buy'` | Vector icon on inline keyboard button |
-
-**Messages** (`fa.py`): always use `p()` / `i()` — never paste raw 🛒 in strings.
-
-**Buttons** (`keyboards.py`): pass `icon="btn_buy"`; label text stays plain Persian.
-
-**Flags in plans.json** (live file on server):
-
-```json
-"locations": [
-  { "code": "de", "name": "آلمان" },
-  { "code": "us", "name": "آمریکا" }
-]
-```
-
-Add new countries in `emoji_registry.json` as `flag_xx` + run auto_map.
-
-**Plan row icons** in `plans.json`:
-
-```json
-{ "emoji_key": "star", "recommended": true }
-```
-
-Keys must exist in `emoji_registry.json` (`star`, `medal`, `diamond`, …).
-
----
-
-## What is *not* customizable
-
-- **Callback popup alerts** (`show_alert=True`) — Telegram allows **plain text only** (no animated emoji). Those use `u()` Unicode fallback.
-- **Button label font** — Telegram renders keyboard text in its own style; you can add vector icons via `icon_custom_emoji_id`, not bold/HTML.
 
 ---
 
@@ -168,7 +189,19 @@ Keys must exist in `emoji_registry.json` (`star`, `medal`, `diamond`, …).
 
 | Problem | Fix |
 |---------|-----|
-| Plain Unicode instead of animated | Run sync + auto_map + rebuild; check Premium on bot owner |
-| Wrong icon | Fix `index` in registry or re-run `auto_map --write` |
-| Flag missing | Add `flag_xx` to registry; `list_emoji_packs --pack FlagsPack --grep 🇩🇪` |
-| STICKERSET_INVALID | Open addemoji links on **bot owner** account |
+| Plain Unicode instead of animated | Run `sync_emoji_packs.py` + rebuild; Premium on bot owner |
+| Wrong icon (block, heart, book…) | **Wrong index** — re-run `list_emoji_packs.py`, fix `index` |
+| New pack missing | Add to `PACKS` in sync script + add on Telegram + sync |
+| STICKERSET_INVALID | Open addemoji link on **bot owner** account |
+| Git pull blocked on server | `./deploy/pull.sh` (resets local registry edits) |
+
+**Do not** rely on blind `auto_map --write` — many stickers have empty or mismatched `alt` text.  
+Use `list_emoji_packs.py` + manual index, or `verified_emoji_indices.json`.
+
+---
+
+## Other notes
+
+- **Callback alerts** (`show_alert=True`) — plain text only; use `u('key')` Unicode fallback.
+- **Flags in plans.json:** `"code": "de"` not `"flag": "🇩🇪"`.
+- **Plan button icons:** `"emoji_key": "star"` in `plans.json` → key in registry.

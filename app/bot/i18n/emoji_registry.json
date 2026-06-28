@@ -1,18 +1,18 @@
 {
-   "_comment": "Semantic key → pack + index. Packs: EmojiStatus, tgmacicons, vector_icons_by_fStikBot, FlagsPack. Run sync_emoji_packs.py then auto_map_emoji_registry.py --write. Browse: list_emoji_packs.py",
+   "_comment": "Semantic key → pack + index. Packs: EmojiStatus, NewsEmoji, tgmacicons, vector_icons_by_fStikBot, FlagsPack. Browse: list_emoji_packs.py — see docs/EMOJI.md",
    "wave": {
-      "pack": "vector_icons_by_fStikBot",
-      "index": 2,
-      "alt": "👋",
-      "fallback": "👋",
+      "pack": "EmojiStatus",
+      "index": 8,
+      "alt": "1⃣",
+      "fallback": "1⃣",
       "pack_prefer": "EmojiStatus",
       "locked": true
    },
    "globe": {
-      "pack": "vector_icons_by_fStikBot",
-      "index": 31,
-      "fallback": "🌐",
-      "alt": "🌐",
+      "pack": "EmojiStatus",
+      "index": 32,
+      "fallback": "⭐️",
+      "alt": "⭐️",
       "pack_prefer": "EmojiStatus",
       "locked": true
    },
@@ -24,10 +24,10 @@
       "locked": true
    },
    "handshake": {
-      "pack": "vector_icons_by_fStikBot",
-      "index": 83,
-      "alt": "🤝",
-      "fallback": "🤝",
+      "pack": "EmojiStatus",
+      "index": 88,
+      "alt": "🔧",
+      "fallback": "🔧",
       "pack_prefer": "EmojiStatus",
       "locked": true
    },
@@ -480,15 +480,11 @@
       "locked": true
    },
    "btn_buy": {
-      "pack": "vector_icons_by_fStikBot",
-      "index": 60,
-      "fallback": "🛒",
-      "btn_fallback": "🛒",
-      "alt": "🛒",
-      "pack_prefer": "EmojiStatus",
-      "search": [
-         "🛒"
-      ],
+      "pack": "NewsEmoji",
+      "index": 3,
+      "fallback": "☄️",
+      "btn_fallback": "☄️",
+      "alt": "☄️",
       "locked": true
    },
    "btn_configs": {

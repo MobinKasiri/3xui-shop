@@ -25,6 +25,7 @@ PACKS = (
     "tgmacicons",
     "vector_icons_by_fStikBot",
     "FlagsPack",
+    "NewsEmoji",
 )
 
 
