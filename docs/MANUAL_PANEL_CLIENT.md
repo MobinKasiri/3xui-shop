@@ -24,11 +24,16 @@ The bot only adds a `vpn_configs` row and (optionally) notifies the user. It doe
 
 2. User has **`/start`** the bot at least once (row in `users` table).
 
-3. Run from server repo (same `.env` as the bot):
+3. Run from server repo (bot must be running in Docker):
 
 ```bash
 cd /opt/nexoranode-bot
+git pull
+./deploy/compose.sh up -d --build bot   # once, after first install of this script
 ```
+
+> **Do not** use host `python3 scripts/…` — system Python has no `aiogram`.  
+> Always use **`./scripts/assign-panel-client.sh`** (runs inside `nexoranode-bot` container).
 
 ---
 
@@ -36,13 +41,13 @@ cd /opt/nexoranode-bot
 
 ```bash
 # 1) Dry run — checks panel + user, no changes
-python3 scripts/assign_panel_client.py \
+./scripts/assign-panel-client.sh \
   --tg-id 123456789 \
   --email ali123 \
   --dry-run
 
 # 2) Assign + send activation message (QR + sub link)
-python3 scripts/assign_panel_client.py \
+./scripts/assign-panel-client.sh \
   --tg-id 123456789 \
   --email ali123
 ```
@@ -71,7 +76,7 @@ The user receives the same photo message as after **admin approves a purchase re
 
 ```bash
 # VIP 30 GB — explicit plan metadata
-python3 scripts/assign_panel_client.py \
+./scripts/assign-panel-client.sh \
   --tg-id 987654321 \
   --email user42 \
   --plan-gb 30 \
@@ -80,7 +85,7 @@ python3 scripts/assign_panel_client.py \
   --plan-name VIP
 
 # Link silently (user already has the link)
-python3 scripts/assign_panel_client.py \
+./scripts/assign-panel-client.sh \
   --tg-id 987654321 \
   --email user42 \
   --no-send
