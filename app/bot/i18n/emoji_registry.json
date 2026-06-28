@@ -367,15 +367,15 @@
       "locked": true
    },
    "play": {
-      "pack": "tgmacicons",
-      "index": 83,
+      "pack": "EmojiStatus",
+      "index": 55,
       "fallback": "▶️",
       "alt": "▶️",
       "locked": true
    },
    "pause": {
       "pack": "EmojiStatus",
-      "index": 7,
+      "index": 56,
       "fallback": "⏸",
       "alt": "⏸",
       "locked": true
