@@ -320,24 +320,20 @@ CONFIG_LIST_ROW_EXPIRED = f"{p('sleep')}{{name}} (منقضی)"
 
 CONFIG_DETAIL = (
     f"{p('refresh')}نام سرویس: <b>{{name}}</b>\n"
-    f"{p('star')}نوع سرویس: {{plan_name}}\n"
-    f"{p('battery')}حجم: <b>{{total_gb}}</b> گیگ\n"
-    f"{p('clock')}مدت زمان: {{duration}}\n"
-    f"{p('user')}تعداد کاربر: نامحدود\n\n"
-    f"{p('key')}<b>کانفیگ اتصال:</b>\n"
-    "<code>{vless}</code>\n\n"
-    f"{p('link')}<b>لینک اشتراک:</b>\n"
-    "<code>{sub_url}</code>"
+    f"{p('star')}نوع سرویس: {{plan_name}}\n\n"
+    f"{p('up')}مصرف حجم:\n"
+    "<code>[{bar}] {used_gb} از {total_gb} گیگ ({pct}٪)</code>\n\n"
+    f"{p('clock')}وضعیت انقضا: <b>{{expiry}}</b>\n"
+    f"{p('pending')}روزهای باقیمانده: <b>{{days}}</b>\n"
+    f"{p('user')}تعداد کاربر: نامحدود"
 )
 
-CONFIG_BTN_USAGE = "وضعیت سرویس"
 CONFIG_BTN_GET_CONFIGS = "دریافت کانفیگ‌ها"
-CONFIG_BTN_GET_SUB = "دریافت اشتراک"
+CONFIG_BTN_SUB_QR = "اشتراک و QR"
 CONFIG_BTN_DISABLE = "غیرفعال‌سازی موقت"
 CONFIG_BTN_ENABLE = "فعال‌سازی"
 CONFIG_BTN_DELETE = "حذف کانفیگ"
 CONFIG_BTN_RESET_SUB = "تغییر لینک ساب"
-CONFIG_BTN_QR = "ساب QR"
 CONFIG_BTN_COPY_SUB = "کپی لینک اشتراک"
 CONFIG_BTN_RENEW = "تمدید سرویس ({discount_pct}٪ تخفیف)"
 
@@ -414,6 +410,13 @@ CONFIG_GET_SUB_TEXT = (
     "این لینک را در اپ خود وارد کنید.\n"
     f"{p('warning')}لینک اشتراک خصوصی است — با دیگران به اشتراک نگذارید."
 )
+CONFIG_SUB_QR_TEXT = (
+    f"{p('link')}<b>اشتراک و QR — {{name}}</b>\n\n"
+    f"{p('key')}<b>لینک اشتراک:</b>\n"
+    "<code>{url}</code>\n\n"
+    f"{p('info')}QR کد در پیام بعدی ارسال می‌شود — اسکن کنید یا لینک را کپی کنید.\n"
+    f"{p('warning')}لینک اشتراک خصوصی است — با دیگران به اشتراک نگذارید."
+)
 DELAYED_START_FMT = f"{p('pending')}هنوز شروع نشده — شروع {{n}} روز پس از اولین اتصال"
 CONFIG_NOT_STARTED = f"{p('pending')}هنوز شروع نشده"
 
@@ -431,6 +434,20 @@ CONFIG_DELETE_CONFIRM = (
     "سرویس «<b>{name}</b>» برای همیشه حذف خواهد شد.\n"
     "این عمل قابل بازگشت نیست."
 )
+CONFIG_DISABLE_CONFIRM = (
+    f"{p('warning')}<b>غیرفعال‌سازی موقت</b>\n\n"
+    "سرویس «<b>{name}</b>» موقتاً قطع می‌شود.\n"
+    "می‌توانید بعداً دوباره فعالش کنید."
+)
+CONFIG_DISABLE_YES = "بله، غیرفعال شود"
+CONFIG_DISABLE_NO = "خیر، بازگشت"
+CONFIG_RESET_SUB_CONFIRM = (
+    f"{p('warning')}<b>تغییر لینک اشتراک</b>\n\n"
+    "لینک فعلی سرویس «<b>{name}</b>» باطل می‌شود و لینک جدید صادر می‌گردد.\n"
+    "باید در اپ VPN دوباره Import کنید."
+)
+CONFIG_RESET_SUB_YES = "بله، لینک عوض شود"
+CONFIG_RESET_SUB_NO = "خیر، بازگشت"
 CONFIG_DELETE_YES = "بله، حذف شود"
 CONFIG_DELETE_NO = "خیر، بازگشت"
 CONFIG_DELETED = (

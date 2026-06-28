@@ -88,7 +88,7 @@ async def show_configs_list(
 
 # ── detail ───────────────────────────────────────────────────────────────────
 
-def _sub_copy_keyboard(sub_url: str, cid: int) -> InlineKeyboardMarkup:
+def _sub_qr_keyboard(sub_url: str, cid: int) -> InlineKeyboardMarkup:
     return (
         K()
         .primary(fa.CONFIG_BTN_COPY_SUB, copy_text=sub_url, icon="copy")
@@ -103,15 +103,15 @@ def _detail_keyboard(config_id: int, is_active: bool, *, renew_label: str) -> In
     cid = config_id
     kb = K()
     kb.primary(renew_label, callback_data=f"renew:start:{cid}", icon="refresh")
-    kb.btn(fa.CONFIG_BTN_USAGE, callback_data=f"cfg:status:{cid}", icon="chart")
-    kb.btn(fa.CONFIG_BTN_QR, callback_data=f"cfg:qr:{cid}", icon="link")
-    kb.btn(fa.CONFIG_BTN_GET_CONFIGS, callback_data=f"cfg:links:{cid}", icon="copy")
-    kb.btn(fa.CONFIG_BTN_GET_SUB, callback_data=f"cfg:sub:{cid}", icon="link")
+    kb.btn(fa.CONFIG_BTN_SUB_QR, callback_data=f"cfg:subqr:{cid}", icon="link")
+    kb.btn(fa.CONFIG_BTN_GET_CONFIGS, callback_data=f"cfg:links:{cid}", icon="download")
     toggle_text = fa.CONFIG_BTN_DISABLE if is_active else fa.CONFIG_BTN_ENABLE
-    kb.btn(toggle_text, callback_data=f"cfg:toggle:{cid}", icon="pause" if is_active else "play")
+    toggle_cb = f"cfg:toggle:{cid}" if is_active else f"cfg:enable:{cid}"
+    toggle_icon = "pause" if is_active else "play"
+    kb.btn(toggle_text, callback_data=toggle_cb, icon=toggle_icon)
     kb.btn(fa.CONFIG_BTN_RESET_SUB, callback_data=f"cfg:resetsub:{cid}", icon="refresh")
     kb.danger(fa.CONFIG_BTN_DELETE, callback_data=f"cfg:delete:{cid}", icon="trash")
-    return kb.nav("menu:configs").adjust(1, 2, 2, 2, 1, 2).as_markup()
+    return kb.nav("menu:configs").adjust(2, 2, 2, 2).as_markup()
 
 
 def _expiry_text(cfg: VPNConfig, panel_expiry_ms: int | None) -> str:
@@ -122,8 +122,50 @@ def _expiry_text(cfg: VPNConfig, panel_expiry_ms: int | None) -> str:
     return to_jalali(cfg.expiry_date)
 
 
-def _duration_text(cfg: VPNConfig) -> str:
-    return f"{to_persian_digits(cfg.plan_days)} روز"
+def _days_left_text(cfg: VPNConfig, panel_expiry_ms: int | None) -> str:
+    if panel_expiry_ms and is_delayed_start(panel_expiry_ms):
+        return to_persian_digits(delayed_start_days(panel_expiry_ms))
+    if cfg.expiry_date and panel_expiry_ms != 0:
+        from app.bot.utils.jalali import days_until
+
+        try:
+            d = days_until(cfg.expiry_date)
+            return to_persian_digits(max(0, d))
+        except Exception:
+            pass
+    return "—"
+
+
+async def _load_panel_traffic(
+    vpn: VPNService | None, cfg: VPNConfig, session: AsyncSession
+) -> int | None:
+    panel_expiry_ms: int | None = None
+    if vpn:
+        try:
+            traffic = await vpn.xui.get_client_traffic(cfg.panel_email)
+            panel_expiry_ms = traffic.expiry_time
+            await vpn.refresh_traffic(session, cfg)
+        except XUIError:
+            pass
+    return panel_expiry_ms
+
+
+async def _detail_text(
+    vpn: VPNService | None, cfg: VPNConfig, session: AsyncSession
+) -> str:
+    panel_expiry_ms = await _load_panel_traffic(vpn, cfg, session)
+    expiry = _expiry_text(cfg, panel_expiry_ms)
+    days_left = _days_left_text(cfg, panel_expiry_ms)
+    return fa.CONFIG_DETAIL.format(
+        name=cfg.service_name,
+        plan_name="VIP",
+        bar=traffic_bar(cfg.traffic_used_bytes, cfg.traffic_limit_bytes),
+        used_gb=to_persian_digits(format_gb(cfg.traffic_used_bytes)),
+        total_gb=to_persian_digits(cfg.plan_gb),
+        pct=to_persian_digits(int(cfg.usage_percent)),
+        expiry=expiry,
+        days=days_left,
+    )
 
 
 def _sub_url(vpn: VPNService | None, cfg: VPNConfig) -> str:
@@ -134,40 +176,11 @@ def _sub_url(vpn: VPNService | None, cfg: VPNConfig) -> str:
     return normalize_subscription_url(cfg.subscription_url)
 
 
-async def _detail_text(
-    vpn: VPNService | None, cfg: VPNConfig
-) -> tuple[str, int | None, str, str]:
-    """Return (text, panel_expiry_ms, ws_link, reality_link)."""
-    panel_expiry_ms: int | None = None
-    ws_link = reality_link = ""
-    if vpn:
-        try:
-            traffic = await vpn.xui.get_client_traffic(cfg.panel_email)
-            panel_expiry_ms = traffic.expiry_time
-        except XUIError:
-            pass
-        try:
-            ws_link, reality_link = await vpn.fetch_links(cfg)
-        except XUIError:
-            pass
-
-    vless = ws_link or reality_link or "—"
-    sub_url = _sub_url(vpn, cfg)
-    text = fa.CONFIG_DETAIL.format(
-        name=cfg.service_name,
-        plan_name="VIP",
-        total_gb=to_persian_digits(cfg.plan_gb),
-        duration=_duration_text(cfg),
-        vless=vless,
-        sub_url=sub_url,
-    )
-    return text, panel_expiry_ms, ws_link, reality_link
-
-
 async def _send_detail(
     target: Message | CallbackQuery,
     cfg: VPNConfig,
     vpn: VPNService | None,
+    session: AsyncSession,
     *,
     edit: bool = True,
     bot_config=None,
@@ -176,7 +189,7 @@ async def _send_detail(
     renew_label = fa.CONFIG_BTN_RENEW.format(
         discount_pct=to_persian_digits(discount_pct),
     )
-    text, _, _, _ = await _detail_text(vpn, cfg)
+    text = await _detail_text(vpn, cfg, session)
     markup = _detail_keyboard(cfg.id, cfg.is_active, renew_label=renew_label)
     msg = target.message if isinstance(target, CallbackQuery) else target
     try:
@@ -200,13 +213,13 @@ async def cb_open_config(
         await _alert(callback, fa.ERRORS["config_not_found"])
         return
     vpn: VPNService | None = kwargs.get("vpn_service")
-    await _send_detail(callback, cfg, vpn, edit=True, bot_config=kwargs.get("config"))
+    await _send_detail(callback, cfg, vpn, session, edit=True, bot_config=kwargs.get("config"))
 
 
-# ── status (usage + traffic) ─────────────────────────────────────────────────
+# ── subscription + QR (merged) ───────────────────────────────────────────────
 
-@router.callback_query(F.data.startswith("cfg:status:"))
-async def cb_status(
+@router.callback_query(F.data.startswith("cfg:subqr:"))
+async def cb_sub_qr(
     callback: CallbackQuery, user: User, session: AsyncSession, **kwargs
 ) -> None:
     cid = int(callback.data.rsplit(":", 1)[-1])
@@ -215,44 +228,20 @@ async def cb_status(
         await _alert(callback, fa.ERRORS["config_not_found"])
         return
     vpn: VPNService | None = kwargs.get("vpn_service")
-
-    up = down = 0
-    panel_expiry_ms = None
-    if vpn:
-        try:
-            traffic = await vpn.xui.get_client_traffic(cfg.panel_email)
-            up = traffic.up
-            down = traffic.down
-            panel_expiry_ms = traffic.expiry_time
-            await vpn.refresh_traffic(session, cfg)
-        except XUIError:
-            pass
-
-    expiry = _expiry_text(cfg, panel_expiry_ms)
-    days_left: str = "—"
-    if cfg.expiry_date and panel_expiry_ms != 0 and not (panel_expiry_ms and is_delayed_start(panel_expiry_ms)):
-        from app.bot.utils.jalali import days_until
-        try:
-            d = days_until(cfg.expiry_date)
-            days_left = to_persian_digits(max(0, d))
-        except Exception:
-            pass
-    if panel_expiry_ms and is_delayed_start(panel_expiry_ms):
-        days_left = to_persian_digits(delayed_start_days(panel_expiry_ms))
-
-    text = fa.CONFIG_STATUS_TEXT.format(
-        name=cfg.service_name,
-        bar=traffic_bar(cfg.traffic_used_bytes, cfg.traffic_limit_bytes),
-        used_gb=to_persian_digits(format_gb(cfg.traffic_used_bytes)),
-        total_gb=to_persian_digits(cfg.plan_gb),
-        pct=to_persian_digits(int(cfg.usage_percent)),
-        expiry=expiry,
-        days=days_left,
-        up=to_persian_digits(format_gb(up)) + " GB",
-        down=to_persian_digits(format_gb(down)) + " GB",
-    )
+    sub_url = _sub_url(vpn, cfg)
+    text = fa.CONFIG_SUB_QR_TEXT.format(name=cfg.service_name, url=sub_url)
     await callback.message.edit_text(
-        text, reply_markup=K().nav(f"cfg:open:{cid}").adjust(2).as_markup()
+        text,
+        reply_markup=_sub_qr_keyboard(sub_url, cid),
+        disable_web_page_preview=True,
+    )
+    qr = make_qr_png(sub_url)
+    photo = BufferedInputFile(qr.getvalue(), filename="qr.png")
+    await callback.message.answer_photo(
+        photo=photo,
+        caption=fa.CONFIG_QR_CAPTION.format(name=cfg.service_name),
+        parse_mode="HTML",
+        reply_markup=K().nav(f"cfg:open:{cid}").adjust(2).as_markup(),
     )
     await callback.answer()
 
@@ -298,10 +287,33 @@ async def cb_links(
     await callback.answer()
 
 
-# ── get sub ──────────────────────────────────────────────────────────────────
+# ── toggle enable/disable ────────────────────────────────────────────────────
 
-@router.callback_query(F.data.startswith("cfg:sub:"))
-async def cb_sub(
+async def _apply_toggle(
+    callback: CallbackQuery,
+    cfg: VPNConfig,
+    vpn: VPNService,
+    session: AsyncSession,
+    new_state: bool,
+    **kwargs,
+) -> None:
+    try:
+        await vpn.set_enabled(session, cfg, new_state)
+    except XUIError:
+        await _alert(callback, fa.ERRORS["api_error"])
+        return
+    cfg.is_active = new_state
+    await _alert(
+        callback,
+        fa.CONFIG_ENABLED if new_state else fa.CONFIG_DISABLED,
+    )
+    await _send_detail(
+        callback, cfg, vpn, session, edit=True, bot_config=kwargs.get("config")
+    )
+
+
+@router.callback_query(F.data.startswith("cfg:toggle:"))
+async def cb_toggle_prompt(
     callback: CallbackQuery, user: User, session: AsyncSession, **kwargs
 ) -> None:
     cid = int(callback.data.rsplit(":", 1)[-1])
@@ -309,21 +321,21 @@ async def cb_sub(
     if not cfg or cfg.user_id != user.tg_id:
         await _alert(callback, fa.ERRORS["config_not_found"])
         return
-    vpn: VPNService | None = kwargs.get("vpn_service")
-    sub_url = _sub_url(vpn, cfg)
-    text = fa.CONFIG_GET_SUB_TEXT.format(name=cfg.service_name, url=sub_url)
     await callback.message.edit_text(
-        text,
-        reply_markup=_sub_copy_keyboard(sub_url, cid),
-        disable_web_page_preview=True,
+        fa.CONFIG_DISABLE_CONFIRM.format(name=cfg.service_name),
+        reply_markup=(
+            K()
+            .danger(fa.CONFIG_DISABLE_YES, callback_data=f"cfg:disableyes:{cid}", icon="confirm")
+            .btn(fa.CONFIG_DISABLE_NO, callback_data=f"cfg:open:{cid}", icon="reject")
+            .adjust(2)
+            .as_markup()
+        ),
     )
     await callback.answer()
 
 
-# ── toggle enable/disable ────────────────────────────────────────────────────
-
-@router.callback_query(F.data.startswith("cfg:toggle:"))
-async def cb_toggle(
+@router.callback_query(F.data.startswith("cfg:disableyes:"))
+async def cb_disable_yes(
     callback: CallbackQuery, user: User, session: AsyncSession, **kwargs
 ) -> None:
     cid = int(callback.data.rsplit(":", 1)[-1])
@@ -335,24 +347,51 @@ async def cb_toggle(
     if vpn is None:
         await _alert(callback, fa.ERRORS["api_error"])
         return
-    new_state = not cfg.is_active
-    try:
-        await vpn.set_enabled(session, cfg, new_state)
-    except XUIError:
+    await _apply_toggle(callback, cfg, vpn, session, False, **kwargs)
+
+
+@router.callback_query(F.data.startswith("cfg:enable:"))
+async def cb_enable(
+    callback: CallbackQuery, user: User, session: AsyncSession, **kwargs
+) -> None:
+    cid = int(callback.data.rsplit(":", 1)[-1])
+    cfg = await VPNConfig.get(session, cid)
+    if not cfg or cfg.user_id != user.tg_id:
+        await _alert(callback, fa.ERRORS["config_not_found"])
+        return
+    vpn: VPNService | None = kwargs.get("vpn_service")
+    if vpn is None:
         await _alert(callback, fa.ERRORS["api_error"])
         return
-    cfg.is_active = new_state
-    await _alert(
-        callback,
-        fa.CONFIG_ENABLED if new_state else fa.CONFIG_DISABLED,
-    )
-    await _send_detail(callback, cfg, vpn, edit=True, bot_config=kwargs.get("config"))
+    await _apply_toggle(callback, cfg, vpn, session, True, **kwargs)
 
 
 # ── reset subscription ───────────────────────────────────────────────────────
 
-@router.callback_query(F.data.startswith("cfg:resetsub:"))
-async def cb_reset_sub(
+@router.callback_query(F.data.regexp(r"^cfg:resetsub:\d+$"))
+async def cb_reset_sub_prompt(
+    callback: CallbackQuery, user: User, session: AsyncSession, **kwargs
+) -> None:
+    cid = int(callback.data.rsplit(":", 1)[-1])
+    cfg = await VPNConfig.get(session, cid)
+    if not cfg or cfg.user_id != user.tg_id:
+        await _alert(callback, fa.ERRORS["config_not_found"])
+        return
+    await callback.message.edit_text(
+        fa.CONFIG_RESET_SUB_CONFIRM.format(name=cfg.service_name),
+        reply_markup=(
+            K()
+            .danger(fa.CONFIG_RESET_SUB_YES, callback_data=f"cfg:resetsubyes:{cid}", icon="confirm")
+            .btn(fa.CONFIG_RESET_SUB_NO, callback_data=f"cfg:open:{cid}", icon="reject")
+            .adjust(2)
+            .as_markup()
+        ),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("cfg:resetsubyes:"))
+async def cb_reset_sub_yes(
     callback: CallbackQuery, user: User, session: AsyncSession, **kwargs
 ) -> None:
     cid = int(callback.data.rsplit(":", 1)[-1])
@@ -373,35 +412,11 @@ async def cb_reset_sub(
     await callback.message.answer(
         fa.CONFIG_RESET_SUB_DONE.format(url=sub_url),
         parse_mode="HTML",
-        reply_markup=_sub_copy_keyboard(sub_url, cid),
+        reply_markup=_sub_qr_keyboard(sub_url, cid),
         disable_web_page_preview=True,
     )
     await callback.answer()
-    await _send_detail(callback, cfg, vpn, edit=True, bot_config=kwargs.get("config"))
-
-
-# ── QR ───────────────────────────────────────────────────────────────────────
-
-@router.callback_query(F.data.startswith("cfg:qr:"))
-async def cb_qr(
-    callback: CallbackQuery, user: User, session: AsyncSession, **kwargs
-) -> None:
-    cid = int(callback.data.rsplit(":", 1)[-1])
-    cfg = await VPNConfig.get(session, cid)
-    if not cfg or cfg.user_id != user.tg_id:
-        await _alert(callback, fa.ERRORS["config_not_found"])
-        return
-    vpn: VPNService | None = kwargs.get("vpn_service")
-    sub_url = _sub_url(vpn, cfg)
-    qr = make_qr_png(sub_url)
-    photo = BufferedInputFile(qr.getvalue(), filename="qr.png")
-    await callback.message.answer_photo(
-        photo=photo,
-        caption=fa.CONFIG_QR_CAPTION.format(name=cfg.service_name),
-        parse_mode="HTML",
-        reply_markup=K().nav(f"cfg:open:{cid}").adjust(2).as_markup(),
-    )
-    await callback.answer()
+    await _send_detail(callback, cfg, vpn, session, edit=True, bot_config=kwargs.get("config"))
 
 
 # ── delete ───────────────────────────────────────────────────────────────────
