@@ -29,6 +29,7 @@ PACKS = (
     "tgmacicons",
     "FlagsPack",
     "NewsEmoji",
+    "EmojiAirdrops",
 )
 
 KEY_PACK_HINTS: dict[str, str] = {

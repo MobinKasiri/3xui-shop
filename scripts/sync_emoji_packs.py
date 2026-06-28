@@ -7,6 +7,7 @@ Allowed packs (bot owner must add all via t.me/addemoji/…):
   - vector_icons_by_fStikBot
   - FlagsPack
   - NewsEmoji
+  - EmojiAirdrops
 
 Requires BOT_TOKEN + Telegram Premium on the BotFather bot owner account.
 
@@ -42,6 +43,7 @@ ADD_LINKS = {
     "vector_icons_by_fStikBot": "https://t.me/addemoji/vector_icons_by_fStikBot",
     "FlagsPack": "https://t.me/addemoji/FlagsPack",
     "NewsEmoji": "https://t.me/addemoji/NewsEmoji",
+    "EmojiAirdrops": "https://t.me/addemoji/EmojiAirdrops",
 }
 
 

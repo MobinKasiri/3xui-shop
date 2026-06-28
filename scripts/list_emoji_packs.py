@@ -26,6 +26,7 @@ PACKS = (
     "vector_icons_by_fStikBot",
     "FlagsPack",
     "NewsEmoji",
+    "EmojiAirdrops",
 )
 
 
