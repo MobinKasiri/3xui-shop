@@ -1,95 +1,118 @@
 # Manual panel client → bot user
 
-Use this when you **create a client directly in 3X-UI** and want it to appear in the bot under a specific user — with the same **QR + subscription link** message as an approved purchase.
+Use when a client was created **directly in 3X-UI** (offline card payment, user not technical).
 
 ---
 
-## When to use
+## Three scripts (independent)
 
-- Client already exists on the panel (manual / migration / support gift)
-- You know the user's **Telegram ID** from the admin manage panel
-- You do **not** need a fake purchase transaction
+| Script | What it does |
+|--------|----------------|
+| `./scripts/assign-panel-client.sh` | Link panel client → user + send QR/sub (no transaction) |
+| `./scripts/record-purchase-transaction.sh` | **Confirmed purchase tx only** → manage panel revenue (no panel/bot create) |
+| `./scripts/manual-purchase.sh` | Both, or `--assign-only` / `--tx-only` |
 
-The bot only adds a `vpn_configs` row and (optionally) notifies the user. It does **not** create the panel client.
+All run **inside Docker** (not host `python3`):
+
+```bash
+cd /opt/nexoranode-bot
+git pull && ./deploy/compose.sh up -d --build bot
+```
+
+---
+
+## Your case: client already assigned, payment missing from panel
+
+User paid to your wallet; you created client on panel and ran assign. **Only record the transaction:**
+
+```bash
+./scripts/record-purchase-transaction.sh \
+  --tg-id 107177203 \
+  --email cuazm8eexy \
+  --amount 370000 \
+  --plan-id vip_30g_30d
+```
+
+Dry run first:
+
+```bash
+./scripts/record-purchase-transaction.sh \
+  --tg-id 107177203 \
+  --email cuazm8eexy \
+  --amount 370000 \
+  --plan-id vip_30g_30d \
+  --dry-run
+```
+
+This adds a **confirmed** `purchase` row linked to `vpn_configs` — shows in manage panel revenue. **Does not** create a duplicate panel client.
+
+If duplicate warning: add `--force` (same user paid twice intentionally).
+
+---
+
+## New offline customer (full flow)
+
+```bash
+# 1) Create client on 3X-UI panel manually
+# 2) One command: assign + transaction + notify user
+./scripts/manual-purchase.sh \
+  --tg-id 107177203 \
+  --email cuazm8eexy \
+  --amount 370000 \
+  --plan-id vip_30g_30d
+```
+
+Or step by step:
+
+```bash
+./scripts/assign-panel-client.sh --tg-id ID --email NAME
+./scripts/record-purchase-transaction.sh --tg-id ID --email NAME --amount N --plan-id PLAN
+```
+
+`manual-purchase.sh` with default (no flags) runs assign then tx; **skips assign** if already linked, then records tx.
+
+---
+
+## Assign only
+
+```bash
+./scripts/assign-panel-client.sh --tg-id ID --email NAME --dry-run
+./scripts/assign-panel-client.sh --tg-id ID --email NAME
+```
+
+User gets the same QR + subscription message as an approved purchase. No transaction row.
+
+---
+
+## Transaction-only flags
+
+| Flag | Description |
+|------|-------------|
+| `--amount` | Paid amount in Toman (required) |
+| `--plan-id` | From `plans.json` e.g. `vip_30g_30d` (required) |
+| `--payment-method` | `card` (default) or `wallet` |
+| `--config-id` | Optional `vpn_configs.id` if email lookup fails |
+| `--force` | Allow duplicate confirmed tx |
+| `--dry-run` | Validate only |
+
+---
+
+## Assign flags
+
+| Flag | Description |
+|------|-------------|
+| `--plan-gb` / `--plan-days` | Shown in activation message |
+| `--plan-name` | Label in message (default: VIP) |
+| `--no-send` | No Telegram message |
+| `--no-sync-tg-id` | Do not set panel tgId |
 
 ---
 
 ## Prerequisites
 
-1. Client exists in **3X-UI** with:
-   - **Email** = service name (`ali123` — lowercase, 3–30 chars, `a-z0-9`)
-   - **Subscription ID** (`subId`) set
-   - **Traffic limit** and **expiry** configured
-   - **Inbounds** attached (same as bot-created clients)
-
-2. User has **`/start`** the bot at least once (row in `users` table).
-
-3. Run from server repo (bot must be running in Docker):
-
-```bash
-cd /opt/nexoranode-bot
-git pull
-./deploy/compose.sh up -d --build bot   # once, after first install of this script
-```
-
-> **Do not** use host `python3 scripts/…` — system Python has no `aiogram`.  
-> Always use **`./scripts/assign-panel-client.sh`** (runs inside `nexoranode-bot` container).
-
----
-
-## Quick start
-
-```bash
-# 1) Dry run — checks panel + user, no changes
-./scripts/assign-panel-client.sh \
-  --tg-id 123456789 \
-  --email ali123 \
-  --dry-run
-
-# 2) Assign + send activation message (QR + sub link)
-./scripts/assign-panel-client.sh \
-  --tg-id 123456789 \
-  --email ali123
-```
-
-The user receives the same photo message as after **admin approves a purchase receipt**.
-
----
-
-## Options
-
-| Flag | Description |
-|------|-------------|
-| `--tg-id` | User Telegram ID (required) |
-| `--email` / `--service-name` | Panel client email (required) |
-| `--plan-gb` | GB shown in message if panel total is 0 |
-| `--plan-days` | Days for “starts after first connection” text |
-| `--plan-id` | Stored in DB (default: `manual`) |
-| `--plan-name` | Label in message (default: `VIP`) |
-| `--no-send` | DB only — no Telegram message |
-| `--no-sync-tg-id` | Do not set panel `tgId` to user |
-| `--dry-run` | Validate only |
-
----
-
-## Examples
-
-```bash
-# VIP 30 GB — explicit plan metadata
-./scripts/assign-panel-client.sh \
-  --tg-id 987654321 \
-  --email user42 \
-  --plan-gb 30 \
-  --plan-days 30 \
-  --plan-id vip_30gb \
-  --plan-name VIP
-
-# Link silently (user already has the link)
-./scripts/assign-panel-client.sh \
-  --tg-id 987654321 \
-  --email user42 \
-  --no-send
-```
+- Client on 3X-UI with email, subId, traffic, inbounds
+- User has `/start` the bot
+- `plan-id` must exist in live `/opt/nexoranode-data/plans.json`
 
 ---
 
@@ -97,20 +120,9 @@ The user receives the same photo message as after **admin approves a purchase re
 
 | Error | Fix |
 |-------|-----|
+| `No bot config for …` | Run assign first, or pass `--config-id` |
+| `Duplicate confirmed purchase` | Tx already recorded; use `--force` if intentional |
+| `Plan … not found` | Check plan id in plans.json |
+| `ModuleNotFoundError: aiogram` | Use `.sh` wrappers, not host `python3` |
 | `User tg_id=… not found` | User must `/start` the bot first |
-| `Panel client … not found` | Create client in 3X-UI; email must match `--email` |
-| `has no subId` | Set subscription ID on panel client |
-| `already linked` | Client already in `vpn_configs` — use another name or delete old row |
-| `Panel bootstrap failed` | Check `XUI_*` / token in `.env` |
-
----
-
-## What the script does
-
-1. Reads client from panel API (`get` + `traffic`)
-2. Optionally sets panel `tgId` to the bot user
-3. Ensures client is on configured inbounds
-4. Inserts `vpn_configs` for that user
-5. Sends `send_service_activated` (QR caption + copy/open buttons) unless `--no-send`
-
-No bot restart required. User sees the service under **مدیریت کانفیگ‌ها** immediately.
+| `already linked` | Use `record-purchase-transaction.sh` only — do not assign again |
