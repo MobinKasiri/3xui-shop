@@ -210,6 +210,15 @@ PAYMENT_METHOD_HEADER = (
 PAY_WALLET_BTN = "پرداخت از موجودی ({balance} ت)"
 PAY_CARD_BTN = "کارت‌به‌کارت"
 
+FREE_CLAIM_HEADER = (
+    f"{p('refresh')}تحویل آنی | {{gb}} گیگ | {{days}} روزه | {{unit_price}} ت\n"
+    f"{p('package')}تعداد: <b>{{quantity}}</b> عدد\n"
+    f"{p('gift')}مبلغ قابل پرداخت: <b>۰</b> تومان "
+    f"(<b>۱۰۰٪</b> تخفیف — <code>{{code}}</code>)\n\n"
+    "برای دریافت اشتراک روی دکمه زیر بزنید:"
+)
+FREE_CLAIM_BTN = "دریافت اشتراک"
+
 # ─── Buy: card payment ───────────────────────────────────────────────────────
 
 CARD_PAYMENT = (

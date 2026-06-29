@@ -2,9 +2,10 @@
 Purchase FSM (screenshots 2–8).
 
 Flow:
-    type  -> plan  -> quantity  -> service_name  -> discount?  -> payment method
-    wallet path => deduct + create configs immediately
-    card path   => upload receipt -> admin approves -> create configs
+    type  -> plan  -> quantity  -> service_name  -> discount?  -> payment | free claim
+    100% discount => free-claim screen (re-validated) -> create configs, no payment
+    wallet path   => deduct + create configs immediately
+    card path     => upload receipt -> admin approves -> create configs
 """
 from __future__ import annotations
 
@@ -32,7 +33,12 @@ from app.bot.services.tx_admin_notify import (
 from app.bot.utils.jalali import to_jalali_full
 from app.bot.utils.keyboards import K
 from app.bot.services.wallet import deduct
-from app.bot.utils.discount import record_usage, validate_and_apply
+from app.bot.utils.discount import (
+    purchase_data_qualifies_for_free_claim,
+    record_usage,
+    revalidate_free_claim,
+    validate_and_apply,
+)
 from app.bot.utils.payment_keyboard import card_payment_keyboard
 from app.bot.utils.receipt_storage import persist_receipt_photo, receipt_file_id
 from app.bot.utils.persian import format_toman, normalize_digits, to_persian_digits
@@ -48,6 +54,8 @@ from app.bot.services.vpn import VPNService
 from app.db.models import User, VPNConfig
 from app.db.models.transaction import (
     PAY_CARD,
+    PAY_WALLET,
+    TX_CONFIRMED,
     TX_PENDING,
     TX_PURCHASE,
     Transaction,
@@ -64,6 +72,7 @@ class PurchaseStates(StatesGroup):
     service_name = State()
     discount = State()
     discount_code = State()
+    free_claim = State()
     payment_method = State()
     awaiting_receipt = State()
 
@@ -192,6 +201,16 @@ def _method_keyboard(balance: int, required: int) -> InlineKeyboardMarkup:
         .btn(fa.PAY_CARD_BTN, callback_data="buy:pay:card", icon="card")
         .nav("buy:back_to_discount")
         .adjust(1, 1, 2)
+        .as_markup()
+    )
+
+
+def _free_claim_keyboard() -> InlineKeyboardMarkup:
+    return (
+        K()
+        .success(fa.FREE_CLAIM_BTN, callback_data="buy:claim:free", icon="key")
+        .nav("buy:back_to_discount")
+        .adjust(1, 2)
         .as_markup()
     )
 
@@ -500,7 +519,7 @@ async def cb_discount_skip(
     session: AsyncSession,
     **kwargs,
 ) -> None:
-    await _go_to_payment_method(callback, state, user, session, **kwargs)
+    await _go_after_discount(callback, state, user, session, **kwargs)
 
 
 @router.callback_query(PurchaseStates.discount, F.data == "buy:discount:festival")
@@ -538,7 +557,7 @@ async def cb_discount_festival(
             new_amount=format_toman(result.final_amount),
         )
     )
-    await _go_to_payment_method(callback, state, user, session, **kwargs)
+    await _go_after_discount(callback, state, user, session, **kwargs)
 
 
 @router.message(PurchaseStates.discount, F.text)
@@ -580,7 +599,51 @@ async def msg_discount_code(
             new_amount=format_toman(result.final_amount),
         )
     )
-    await _go_to_payment_method(message, state, user, session, **kwargs)
+    await _go_after_discount(message, state, user, session, **kwargs)
+
+
+async def _go_after_discount(
+    target: CallbackQuery | Message,
+    state: FSMContext,
+    user: User,
+    session: AsyncSession,
+    **kwargs,
+) -> None:
+    data = await state.get_data()
+    base_amount = int(data.get("base_amount", 0)) or _compute_base_amount(data)
+    final_amount = _resolve_final_amount({**data, "base_amount": base_amount})
+    await state.update_data(base_amount=base_amount, final_amount=final_amount)
+    merged = {**data, "base_amount": base_amount, "final_amount": final_amount}
+
+    if purchase_data_qualifies_for_free_claim(merged, base_amount=base_amount):
+        await _go_to_free_claim(target, state, merged)
+        return
+    await _go_to_payment_method(target, state, user, session, **kwargs)
+
+
+async def _go_to_free_claim(
+    target: CallbackQuery | Message,
+    state: FSMContext,
+    data: dict,
+) -> None:
+    plan = data.get("plan") or {}
+    quantity = _purchase_quantity(data)
+    unit_price = _unit_price(data)
+    await state.set_state(PurchaseStates.free_claim)
+
+    text = fa.FREE_CLAIM_HEADER.format(
+        gb=to_persian_digits(plan.get("gb", 0)),
+        days=to_persian_digits(plan.get("days", 0)),
+        unit_price=format_toman(unit_price),
+        quantity=to_persian_digits(quantity),
+        code=data.get("discount_code", "—"),
+    )
+    markup = _free_claim_keyboard()
+    if isinstance(target, CallbackQuery):
+        await target.message.edit_text(text, reply_markup=markup)
+        await target.answer()
+    else:
+        await target.answer(text, reply_markup=markup)
 
 
 async def _go_to_payment_method(
@@ -626,6 +689,100 @@ async def cb_back_to_discount(
     )
 
 
+# ── free claim (100% discount) ───────────────────────────────────────────────
+
+@router.callback_query(PurchaseStates.free_claim, F.data == "buy:claim:free")
+async def cb_free_claim(
+    callback: CallbackQuery,
+    state: FSMContext,
+    user: User,
+    session: AsyncSession,
+    **kwargs,
+) -> None:
+    data = await state.get_data()
+    plan = data.get("plan") or {}
+    names = list(data.get("service_names") or [])
+    discount_code = data.get("discount_code")
+    discount_id = data.get("discount_id")
+
+    if not plan or not names or not discount_code or not discount_id:
+        await callback.answer(fa.ERRORS["general"], show_alert=True)
+        await state.clear()
+        return
+
+    base_amount = int(data.get("base_amount", 0)) or _compute_base_amount(data)
+    result = await revalidate_free_claim(
+        session,
+        code_str=str(discount_code),
+        user_id=user.tg_id,
+        base_amount=base_amount,
+        expected_code_id=int(discount_id),
+    )
+    if result.error or result.code is None:
+        err_key = result.error or "invalid_discount"
+        await callback.answer(fa.ERRORS.get(err_key, fa.ERRORS["invalid_discount"]), show_alert=True)
+        await _enter_discount_step(
+            callback,
+            state,
+            base_amount,
+            session=session,
+            user=user,
+            config=kwargs.get("config"),
+        )
+        return
+
+    vpn_service = kwargs.get("vpn_service")
+    if vpn_service is None:
+        await callback.answer(fa.ERRORS["vpn_unavailable"], show_alert=True)
+        return
+
+    await callback.message.edit_text(fa.WAIT_CREATING)
+    await callback.answer()
+
+    try:
+        results = await _create_configs_for_user(session, user, data, vpn_service)
+    except Exception:
+        logger.exception("Free-claim purchase: create_configs failed")
+        await callback.message.edit_text(fa.ERRORS["config_create_failed"])
+        await state.clear()
+        return
+
+    try:
+        await record_usage(session, result.code.id, user.tg_id)
+    except Exception:
+        logger.exception("Free-claim purchase: failed to record discount usage")
+
+    tx_desc = fa.TX_DESC_PURCHASE.format(
+        plan_name=plan.get("tier_name", fa.TIER_NAME_DEFAULT),
+        qty=to_persian_digits(int(data.get("quantity", 1))),
+        name=", ".join(names),
+    )
+    try:
+        await Transaction.create(
+            session,
+            user_id=user.tg_id,
+            amount=0,
+            payment_amount=0,
+            type=TX_PURCHASE,
+            description=tx_desc,
+            plan_id=plan.get("id"),
+            config_id=results[0].config.id if results else None,
+            service_name=names[0] if names else None,
+            quantity=int(data.get("quantity", 1)),
+            payment_method=PAY_WALLET,
+            discount_code=result.code.code,
+            discount_amount=int(result.discount_amount),
+            status=TX_CONFIRMED,
+            confirmed_at=datetime.utcnow(),
+        )
+    except Exception:
+        logger.exception("Free-claim purchase: failed to record transaction")
+
+    await _credit_referrer(session, user, kwargs.get("config"), callback.bot)
+    await _send_purchase_success(callback.message, results, plan, vpn=vpn_service)
+    await state.clear()
+
+
 # ── payment: wallet ─────────────────────────────────────────────────────────
 
 @router.callback_query(PurchaseStates.payment_method, F.data == "buy:pay:wallet")
@@ -639,6 +796,10 @@ async def cb_pay_wallet(
     data = await state.get_data()
     plan = data.get("plan") or {}
     final_amount = _resolve_final_amount(data)
+
+    if final_amount <= 0:
+        await callback.answer(fa.ERRORS["invalid_discount"], show_alert=True)
+        return
 
     if user.balance < final_amount:
         await callback.answer(
@@ -719,6 +880,11 @@ async def cb_pay_card(
     config = kwargs.get("config")
     data = await state.get_data()
     final_amount = _resolve_final_amount(data)
+
+    if final_amount <= 0:
+        await callback.answer(fa.ERRORS["invalid_discount"], show_alert=True)
+        return
+
     payment_amount = final_amount
 
     await state.update_data(
