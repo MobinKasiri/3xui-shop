@@ -31,6 +31,7 @@ from app.bot.utils.jalali import (
 from app.bot.utils.messaging import edit_or_answer_callback
 from app.bot.utils.persian import format_toman, to_persian_digits
 from app.bot.utils.plan_labels import tier_display_for_plan_id
+from app.bot.utils.progress import format_gb, traffic_bar
 from app.bot.utils.qr import make_qr_png
 from app.db.models import User, VPNConfig
 
