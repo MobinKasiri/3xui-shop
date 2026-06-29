@@ -102,7 +102,7 @@ User gets the same QR + subscription message as an approved purchase. No transac
 | Flag | Description |
 |------|-------------|
 | `--plan-gb` / `--plan-days` | Shown in activation message |
-| `--plan-name` | Label in message (default: VIP) |
+| `--plan-name` | Label in activation message (default: tier name from plans.json) |
 | `--no-send` | No Telegram message |
 | `--no-sync-tg-id` | Do not set panel tgId |
 

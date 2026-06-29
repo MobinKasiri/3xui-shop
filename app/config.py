@@ -77,7 +77,7 @@ class PaymentConfig:
 
 @dataclass
 class PricingConfig:
-    """All plans, keyed by tier id ('vip', 'regular'). Each tier has plans list."""
+    """All plans, keyed by tier id (e.g. 'vip'). Each tier has a display name + plans list."""
 
     TIERS: dict = field(default_factory=dict)
     REFERRAL_BONUS_TOMAN: int = 50000

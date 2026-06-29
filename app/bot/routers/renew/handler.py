@@ -325,7 +325,7 @@ async def cb_renew_pay_wallet(
         return
 
     tx_desc = fa.TX_DESC_RENEW.format(
-        plan_name=plan.get("tier_name", "VIP"),
+        plan_name=plan.get("tier_name", fa.TIER_NAME_DEFAULT),
         name=cfg.service_name,
     )
     discount_pct = int(data.get("discount_pct") or 0)
@@ -417,7 +417,7 @@ async def _create_pending_renew_tx(
     service_name = data.get("service_name") or "—"
 
     tx_desc = fa.TX_DESC_RENEW.format(
-        plan_name=plan.get("tier_name", "VIP"),
+        plan_name=plan.get("tier_name", fa.TIER_NAME_DEFAULT),
         name=service_name,
     )
     receipt_photo = receipt_file_id(message)
@@ -454,7 +454,7 @@ async def _create_pending_renew_tx(
                 "user_name": user.full_name,
                 "username": user.username,
                 "tg_id": user.tg_id,
-                "plan_name": plan.get("tier_name", "VIP"),
+                "plan_name": plan.get("tier_name", fa.TIER_NAME_DEFAULT),
                 "service_name": service_name,
                 "amount": payment_amount,
                 "discount": f"{discount_pct}% (-{format_toman(int(data.get('renewal_discount', 0)))} ت)",

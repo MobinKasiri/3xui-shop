@@ -8,7 +8,7 @@ The bot uses these Telegram sticker packs (animated vector emoji):
 | **NewsEmoji** | https://t.me/addemoji/NewsEmoji | Buy button (☄️), news-style icons |
 | **tgmacicons** | https://t.me/addemoji/tgmacicons | Mac-style UI icons |
 | **vector_icons_by_fStikBot** | https://t.me/addemoji/vector_icons_by_fStikBot | Colorful UI icons |
-| **FlagsPack** | https://t.me/addemoji/FlagsPack | Country flags (VIP locations) |
+| **FlagsPack** | https://t.me/addemoji/FlagsPack | Country flags (plan locations) |
 
 **Requirements:** Telegram Premium on the **BotFather bot owner** account. Add **all** packs on that account, then sync.
 

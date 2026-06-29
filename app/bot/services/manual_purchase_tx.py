@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
+from app.bot.utils.plan_labels import tier_display_name
 from app.bot.utils.persian import to_persian_digits
 from app.bot.utils.service_name import panel_email, validate
 from app.config import Config
@@ -149,7 +150,7 @@ async def record_manual_purchase_transaction(
             f"(user={tg_id} service={email} amount={amount}). Use --force to add anyway."
         )
 
-    tier_name = plan.get("tier_name") or "VIP"
+    tier_name = tier_display_name(plan)
     description = fa.TX_DESC_PURCHASE.format(
         plan_name=tier_name,
         qty=to_persian_digits(1),

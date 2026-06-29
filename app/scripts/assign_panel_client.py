@@ -35,7 +35,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--plan-id", default="manual", help="Stored plan_id (default: manual)")
     p.add_argument("--plan-gb", type=int, default=0, help="Plan GB if panel total is 0")
     p.add_argument("--plan-days", type=int, default=30, help="Plan days for delayed-start text")
-    p.add_argument("--plan-name", default="VIP", help="Label in activation message")
+    p.add_argument("--plan-name", default="", help="Label in activation message (default: tier name from plans.json)")
     p.add_argument(
         "--no-send",
         action="store_true",

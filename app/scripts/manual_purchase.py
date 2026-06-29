@@ -38,7 +38,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--plan-id", default="", help="Required unless --assign-only")
     p.add_argument("--plan-gb", type=int, default=0)
     p.add_argument("--plan-days", type=int, default=30)
-    p.add_argument("--plan-name", default="VIP")
+    p.add_argument("--plan-name", default="", help="Label in activation message (default: tier name)")
     p.add_argument("--config-id", type=int, default=None)
     p.add_argument("--payment-method", choices=("card", "wallet"), default="card")
     p.add_argument("--note", default="")

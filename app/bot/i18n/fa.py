@@ -139,12 +139,12 @@ ERRORS = {
 
 BUY_TYPE_HEADER = f"{p('cart')}برای خرید سرویس لطفاً یکی از دسته‌بندی‌های زیر را انتخاب کنید."
 
-BUY_VIP_BTN = "سرویس VIP چند لوکیشن"
+BUY_PRIMARY_TIER_BTN = "سرویس چند لوکیشن"
 
-VIP_TIER_NAME_DEFAULT = "سرویس VIP چند لوکیشن"
-VIP_PLANS_TABLE_SUBTITLE_DEFAULT = "یک اشتراک — همه سرورها فعال می‌شوند:"
+TIER_NAME_DEFAULT = "سرویس چند لوکیشن"
+PLANS_TABLE_SUBTITLE_DEFAULT = "یک اشتراک — همه سرورها فعال می‌شوند:"
 
-VIP_PLAN_BTN = "{lead}{gb} گیگ · {price} تومان{badge}"
+PLAN_BTN = "{lead}{gb} گیگ · {price} تومان{badge}"
 
 # ─── Buy: quantity ───────────────────────────────────────────────────────────
 

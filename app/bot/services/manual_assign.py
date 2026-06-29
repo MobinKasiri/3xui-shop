@@ -8,6 +8,7 @@ from aiogram import Bot
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
+from app.bot.utils.plan_labels import DEFAULT_TIER_DISPLAY_NAME
 from app.bot.services.vpn import GB, VPNService
 from app.bot.services.xui_api import XUIApiService, XUIError, XUINotFound, extract_vless_uuid
 from app.bot.utils.jalali import (
@@ -61,7 +62,7 @@ async def assign_panel_client_to_user(
     plan_id: str = "manual",
     plan_gb: int = 0,
     plan_days: int = 30,
-    plan_name: str = "VIP",
+    plan_name: str = "",
     sync_tg_id: bool = True,
     send_notification: bool = True,
     dry_run: bool = False,
@@ -201,11 +202,12 @@ async def assign_panel_client_to_user(
         if bot is None:
             raise ValueError("BOT_TOKEN required to send notification (or use --no-send)")
         try:
+            display_plan_name = (plan_name or "").strip() or DEFAULT_TIER_DISPLAY_NAME
             await send_service_activated(
                 bot,
                 tg_id,
                 name=config.service_name,
-                plan_name=plan_name,
+                plan_name=display_plan_name,
                 gb=config.plan_gb,
                 days=config.plan_days,
                 expiry=expiry_text_for_config(config),

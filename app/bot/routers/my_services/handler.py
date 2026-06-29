@@ -30,7 +30,7 @@ from app.bot.utils.jalali import (
 )
 from app.bot.utils.messaging import edit_or_answer_callback
 from app.bot.utils.persian import format_toman, to_persian_digits
-from app.bot.utils.progress import format_gb, traffic_bar
+from app.bot.utils.plan_labels import tier_display_for_plan_id
 from app.bot.utils.qr import make_qr_png
 from app.db.models import User, VPNConfig
 
@@ -151,14 +151,19 @@ async def _load_panel_traffic(
 
 
 async def _detail_text(
-    vpn: VPNService | None, cfg: VPNConfig, session: AsyncSession
+    vpn: VPNService | None,
+    cfg: VPNConfig,
+    session: AsyncSession,
+    *,
+    pricing=None,
 ) -> str:
     panel_expiry_ms = await _load_panel_traffic(vpn, cfg, session)
     expiry = _expiry_text(cfg, panel_expiry_ms)
     days_left = _days_left_text(cfg, panel_expiry_ms)
+    plan_name = tier_display_for_plan_id(pricing, cfg.plan_id)
     return fa.CONFIG_DETAIL.format(
         name=cfg.service_name,
-        plan_name="VIP",
+        plan_name=plan_name,
         bar=traffic_bar(cfg.traffic_used_bytes, cfg.traffic_limit_bytes),
         used_gb=to_persian_digits(format_gb(cfg.traffic_used_bytes)),
         total_gb=to_persian_digits(cfg.plan_gb),
@@ -189,7 +194,8 @@ async def _send_detail(
     renew_label = fa.CONFIG_BTN_RENEW.format(
         discount_pct=to_persian_digits(discount_pct),
     )
-    text = await _detail_text(vpn, cfg, session)
+    pricing = bot_config.pricing if bot_config else None
+    text = await _detail_text(vpn, cfg, session, pricing=pricing)
     markup = _detail_keyboard(cfg.id, cfg.is_active, renew_label=renew_label)
     msg = target.message if isinstance(target, CallbackQuery) else target
     try:

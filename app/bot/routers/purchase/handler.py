@@ -118,7 +118,7 @@ def _back_home_row() -> tuple[str, str]:
 
 def _format_plan_label(plan: dict) -> str:
     badge = " · (پیشنهادی)" if plan.get("recommended") else ""
-    return fa.VIP_PLAN_BTN.format(
+    return fa.PLAN_BTN.format(
         lead="",
         gb=to_persian_digits(plan["gb"]),
         price=format_toman(plan["price"]),
@@ -126,11 +126,11 @@ def _format_plan_label(plan: dict) -> str:
     )
 
 
-def _type_keyboard(vip_tier: dict | None = None) -> InlineKeyboardMarkup:
-    if vip_tier:
-        label = str(vip_tier.get("name", fa.VIP_TIER_NAME_DEFAULT)).strip() or fa.BUY_VIP_BTN
+def _type_keyboard(primary_tier: dict | None = None) -> InlineKeyboardMarkup:
+    if primary_tier:
+        label = str(primary_tier.get("name", fa.TIER_NAME_DEFAULT)).strip() or fa.BUY_PRIMARY_TIER_BTN
     else:
-        label = fa.BUY_VIP_BTN
+        label = fa.BUY_PRIMARY_TIER_BTN
     return (
         K()
         .primary(label, callback_data="buy:type:vip", icon="globe")
@@ -207,8 +207,8 @@ async def show_type_screen(
 ) -> None:
     await state.clear()
     config = kwargs.get("config")
-    vip_tier = config.pricing.get_tier("vip") if config else None
-    markup = _type_keyboard(vip_tier)
+    primary_tier = config.pricing.get_tier("vip") if config else None
+    markup = _type_keyboard(primary_tier)
     if isinstance(target, CallbackQuery):
         await target.message.edit_text(fa.BUY_TYPE_HEADER, reply_markup=markup)
         await target.answer()
@@ -670,7 +670,7 @@ async def cb_pay_wallet(
         return
 
     tx_desc = fa.TX_DESC_PURCHASE.format(
-        plan_name=plan.get("tier_name", "VIP"),
+        plan_name=plan.get("tier_name", fa.TIER_NAME_DEFAULT),
         qty=to_persian_digits(int(data.get("quantity", 1))),
         name=", ".join(data.get("service_names", [])),
     )
@@ -774,7 +774,7 @@ async def _create_pending_purchase_tx(
     names = data.get("service_names", [])
 
     tx_desc = fa.TX_DESC_PURCHASE.format(
-        plan_name=plan.get("tier_name", "VIP"),
+        plan_name=plan.get("tier_name", fa.TIER_NAME_DEFAULT),
         qty=to_persian_digits(int(data.get("quantity", 1))),
         name=", ".join(names) if names else "—",
     )
@@ -813,7 +813,7 @@ async def _create_pending_purchase_tx(
                 "user_name": user.full_name,
                 "username": user.username,
                 "tg_id": user.tg_id,
-                "plan_name": plan.get("tier_name", "VIP"),
+                "plan_name": plan.get("tier_name", fa.TIER_NAME_DEFAULT),
                 "quantity": int(data.get("quantity", 1)),
                 "service_name": names[0] if names else "—",
                 "amount": payment_amount,
@@ -895,7 +895,7 @@ def _expiry_text_for_config(cfg) -> str:
 async def _send_purchase_success(message: Message, results, plan: dict, vpn=None) -> None:
     from app.bot.utils.service_activation import send_service_activated_reply
 
-    plan_name = plan.get("tier_name", "VIP")
+    plan_name = plan.get("tier_name", fa.TIER_NAME_DEFAULT)
 
     if len(results) == 1:
         cfg = results[0].config
@@ -1046,7 +1046,7 @@ async def cb_admin_approve(
 async def _send_purchase_success_to_user(bot, user_id: int, results, plan: dict, vpn=None) -> None:
     from app.bot.utils.service_activation import send_service_activated
 
-    plan_name = plan.get("tier_name", "VIP")
+    plan_name = plan.get("tier_name", fa.TIER_NAME_DEFAULT)
     if len(results) == 1:
         cfg = results[0].config
         await send_service_activated(

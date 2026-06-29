@@ -13,6 +13,7 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.i18n import fa
+from app.bot.utils.plan_labels import DEFAULT_TIER_DISPLAY_NAME
 from app.bot.utils.jalali import to_jalali_full
 from app.bot.utils.persian import format_toman, to_persian_digits
 from app.db.models.transaction import Transaction
@@ -99,7 +100,7 @@ def _build_pending_renew_caption(payload: dict[str, Any]) -> str:
         name=payload["user_name"],
         username=payload.get("username") or "—",
         tg_id=payload["tg_id"],
-        plan_name=payload.get("plan_name") or "VIP",
+        plan_name=payload.get("plan_name") or DEFAULT_TIER_DISPLAY_NAME,
         service_name=payload.get("service_name") or "—",
         amount=format_toman(int(payload["amount"])),
         discount=payload.get("discount") or "—",
@@ -356,7 +357,7 @@ async def _fallback_text_notify(
             name=payload.get("user_name"),
             username=payload.get("username") or "—",
             tg_id=payload.get("tg_id"),
-            plan_name=payload.get("plan_name") or "VIP",
+            plan_name=payload.get("plan_name") or DEFAULT_TIER_DISPLAY_NAME,
             service_name=payload.get("service_name") or "—",
             amount=format_toman(int(payload.get("amount", 0))),
             discount=payload.get("discount") or "—",
