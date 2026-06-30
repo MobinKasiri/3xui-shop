@@ -8,7 +8,7 @@ If **Germany** (`91.107.177.122`) dies, UK/US/SG **real nodes keep running**. Us
 
 | Layer | What | RPO | Use when |
 |-------|------|-----|----------|
-| **Panel Telegram** (every 6h) | `x-ui.db` / panel DB snapshot only | up to 6h | Quick panel rollback on same server |
+| **Panel Telegram** (every 6h) | Panel DB snapshot (`.dump` on PostgreSQL, `x-ui.db` on SQLite) + `config.json` | up to 6h | Quick panel rollback on same server |
 | **Full server backup** (`nc-vpn-backup`) | Panel PG + bot PG + `/opt/nexoranode-*` + x-ui + certs + nginx + UFW | daily (+ Mac copy) | **New VPS restore** |
 
 Panel Telegram backup is **not** enough for DR. Enable **full backup** below.
@@ -178,7 +178,7 @@ Telegram:
 ## If Mac backup is missing
 
 1. Use latest on server: `/var/lib/nc-vpn-backup/export/` (keep 3 versions).
-2. Or panel Telegram DB backup (partial — clients/inbounds only, no bot orders).
+2. Or panel Telegram backup (`.dump` + `config.json` — panel only, no bot orders; see `scripts/PANEL-TELEGRAM-BACKUP.md`).
 3. Worst case: rebuild from `scripts/xui-nodes.conf` + manual client re-import.
 
 ---
