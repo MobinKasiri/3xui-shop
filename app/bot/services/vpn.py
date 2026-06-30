@@ -1,8 +1,8 @@
 """
 VPN config service — creates, deletes, toggles configs via 3X-UI.
 
-Each VPN config maps to a single panel client (email = service name, e.g. ``ali``).
-attached to one or more panel inbounds.
+Each VPN config has a user-facing ``service_name`` (bot UI) and a system
+``panel_email`` (3X-UI client id). Panel ``comment`` stores the display name.
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ from app.bot.utils.jalali import (
     ms_to_datetime,
     start_after_first_use_ms,
 )
-from app.bot.utils.service_name import panel_email
+from app.bot.utils.service_name import allocate_panel_email
 from app.bot.utils.renewal_pricing import SERVICE_MAX_DAYS
 from app.db.models import VPNConfig
 
@@ -125,7 +125,11 @@ class VPNService:
         Create a single client on the panel and a corresponding VPNConfig row.
         Raises XUIError on panel failure (and rolls back any partial panel state).
         """
-        email = panel_email(service_name)
+        display_name = service_name.strip().lower()
+        if await VPNConfig.get_by_name(session, user_id, display_name):
+            raise XUIError(f"duplicate_service_name:{display_name}")
+
+        email = await allocate_panel_email(session, self.xui, tg_id)
         vless_uuid_hint = _make_uuid()
         sub_id = _make_sub_id()
 
@@ -147,7 +151,7 @@ class VPNService:
             flow="",
             inbound_ids=await self._active_inbound_ids(),
             tg_id=tg_id,
-            comment=service_name,
+            comment=display_name,
         )
 
         try:
@@ -174,13 +178,16 @@ class VPNService:
                 await self.xui.delete_client(email)
             except Exception as rollback_err:
                 logger.debug("Rollback failed for %s: %s", email, rollback_err)
+            msg = str(e).lower()
+            if "duplicate email" in msg:
+                raise XUIError(f"duplicate_email:{email}") from e
             raise
 
         sub_url = self.sub_url(sub_id)
         config = await VPNConfig.create(
             session,
             user_id=user_id,
-            service_name=service_name,
+            service_name=display_name,
             panel_email=email,
             panel_uuid=vless_uuid,
             subscription_id=sub_id,
@@ -195,7 +202,7 @@ class VPNService:
         )
         logger.info(
             "Created config user=%s name=%s sub=%s inbounds=%s",
-            user_id, service_name, sub_url, payload.inbound_ids,
+            user_id, display_name, sub_url, payload.inbound_ids,
         )
         await self._signal_direct_nodes()
         return VPNConfigResult(config=config, subscription_url=sub_url)

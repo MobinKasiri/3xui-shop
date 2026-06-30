@@ -24,8 +24,8 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument("--tg-id", type=int, required=True, help="User Telegram ID")
     g = p.add_mutually_exclusive_group(required=True)
-    g.add_argument("--email", help="Service / panel email")
-    g.add_argument("--service-name", help="Alias for --email")
+    g.add_argument("--email", help="Panel client email (lookup)")
+    g.add_argument("--service-name", help="Bot service name (lookup)")
     p.add_argument("--amount", type=int, required=True, help="Paid amount in Toman")
     p.add_argument(
         "--plan-id",
@@ -56,9 +56,9 @@ def _parse_args() -> argparse.Namespace:
 
 async def main() -> int:
     args = _parse_args()
-    service_name = (args.email or args.service_name or "").strip()
-    if not service_name:
-        print("Provide --email or --service-name", file=sys.stderr)
+    lookup = (args.service_name or args.email or "").strip()
+    if not lookup and args.config_id is None:
+        print("Provide --service-name, --email, or --config-id", file=sys.stderr)
         return 1
 
     config = load_config()
@@ -71,7 +71,7 @@ async def main() -> int:
                 session,
                 config,
                 tg_id=args.tg_id,
-                service_name=service_name,
+                service_name=lookup,
                 amount=args.amount,
                 plan_id=args.plan_id,
                 config_id=args.config_id,

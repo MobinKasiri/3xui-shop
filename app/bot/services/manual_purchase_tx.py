@@ -1,6 +1,6 @@
 """Record a confirmed purchase transaction for offline / manual card payments.
 
-Does NOT create panel clients — link an existing config via config_id or service email.
+Does NOT create panel clients — link an existing config via config_id or service lookup.
 """
 from __future__ import annotations
 
@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.i18n import fa
 from app.bot.utils.plan_labels import tier_display_name
 from app.bot.utils.persian import to_persian_digits
-from app.bot.utils.service_name import panel_email, validate
 from app.config import Config
 from app.db.models import User, VPNConfig
 from app.db.models.transaction import (
@@ -41,7 +40,7 @@ async def _resolve_config(
     session: AsyncSession,
     *,
     tg_id: int,
-    service_name: str,
+    lookup: str,
     config_id: int | None,
 ) -> VPNConfig:
     if config_id is not None:
@@ -54,21 +53,24 @@ async def _resolve_config(
             )
         return cfg
 
-    email = panel_email(service_name)
-    cfg = await VPNConfig.get_by_email(session, email)
+    key = lookup.strip().lower()
+    if not key:
+        raise ValueError("Provide --config-id, --service-name, or --email")
+
+    cfg = await VPNConfig.get_by_name(session, tg_id, key)
+    if cfg:
+        return cfg
+
+    cfg = await VPNConfig.get_by_email(session, key)
     if cfg:
         if cfg.user_id != tg_id:
             raise ValueError(
-                f"Service {email!r} belongs to user {cfg.user_id}, not {tg_id}"
+                f"Panel email {key!r} belongs to user {cfg.user_id}, not {tg_id}"
             )
         return cfg
 
-    cfg = await VPNConfig.get_by_name(session, tg_id, email)
-    if cfg:
-        return cfg
-
     raise ValueError(
-        f"No bot config for {email!r} / user {tg_id}. "
+        f"No bot config for {key!r} / user {tg_id}. "
         "Run assign-panel-client.sh first or pass --config-id"
     )
 
@@ -91,11 +93,10 @@ async def _find_duplicate_tx(
         .limit(5)
     )
     rows = list((await session.execute(q)).scalars().all())
-    email = panel_email(service_name)
     for tx in rows:
         if tx.config_id and config_id and tx.config_id == config_id:
             return tx
-        if tx.service_name and tx.service_name.lower() == email:
+        if tx.service_name and tx.service_name.lower() == service_name.lower():
             return tx
     return None
 
@@ -121,9 +122,9 @@ async def record_manual_purchase_transaction(
     if amount <= 0:
         raise ValueError("--amount must be positive (Toman)")
 
-    email = panel_email(service_name)
-    if not validate(email):
-        raise ValueError(f"Invalid service name {service_name!r}")
+    lookup = service_name.strip()
+    if not lookup:
+        raise ValueError("Provide --service-name or --email")
 
     user = await User.get(session, tg_id)
     if not user:
@@ -134,20 +135,21 @@ async def record_manual_purchase_transaction(
 
     plan = _resolve_plan(config, plan_id)
     cfg = await _resolve_config(
-        session, tg_id=tg_id, service_name=email, config_id=config_id
+        session, tg_id=tg_id, lookup=lookup, config_id=config_id
     )
 
     dup = await _find_duplicate_tx(
         session,
         user_id=tg_id,
-        service_name=email,
+        service_name=cfg.service_name,
         amount=amount,
         config_id=cfg.id,
     )
     if dup and not allow_duplicate:
         raise ValueError(
             f"Duplicate confirmed purchase tx id={dup.id} "
-            f"(user={tg_id} service={email} amount={amount}). Use --force to add anyway."
+            f"(user={tg_id} service={cfg.service_name} amount={amount}). "
+            "Use --force to add anyway."
         )
 
     tier_name = tier_display_name(plan)

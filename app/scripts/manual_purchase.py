@@ -30,9 +30,16 @@ def _parse_args() -> argparse.Namespace:
     mode.add_argument("--tx-only", action="store_true", help="Record transaction only")
 
     p.add_argument("--tg-id", type=int, required=True)
-    g = p.add_mutually_exclusive_group(required=True)
-    g.add_argument("--email")
-    g.add_argument("--service-name")
+    p.add_argument(
+        "--email",
+        default="",
+        help="3X-UI panel client email (required for assign step)",
+    )
+    p.add_argument(
+        "--service-name",
+        default="",
+        help="Bot display name (assign) or lookup key for transaction",
+    )
 
     p.add_argument("--amount", type=int, default=0, help="Required unless --assign-only")
     p.add_argument("--plan-id", default="", help="Required unless --assign-only")
@@ -56,13 +63,19 @@ def _parse_args() -> argparse.Namespace:
 
 async def main() -> int:
     args = _parse_args()
-    service_name = (args.email or args.service_name or "").strip()
-    if not service_name:
-        print("Provide --email or --service-name", file=sys.stderr)
+    panel_email = (args.email or "").strip()
+    service_name = (args.service_name or "").strip() or None
+    lookup = service_name or panel_email
+    if not lookup and args.config_id is None:
+        print("Provide --email and/or --service-name (or --config-id for tx)", file=sys.stderr)
         return 1
 
     do_assign = args.assign_only or not args.tx_only
     do_tx = args.tx_only or not args.assign_only
+
+    if do_assign and not panel_email:
+        print("--email (panel client email) is required for assign step", file=sys.stderr)
+        return 1
 
     if do_tx and not args.tx_only:
         if args.amount <= 0 or not args.plan_id:
@@ -105,6 +118,7 @@ async def main() -> int:
                         vpn=vpn,
                         bot=bot,
                         tg_id=args.tg_id,
+                        panel_email=panel_email,
                         service_name=service_name,
                         plan_id=args.plan_id or "manual",
                         plan_gb=args.plan_gb,
@@ -128,7 +142,7 @@ async def main() -> int:
                     session,
                     config,
                     tg_id=args.tg_id,
-                    service_name=service_name,
+                    service_name=lookup,
                     amount=args.amount,
                     plan_id=args.plan_id,
                     config_id=args.config_id
@@ -150,7 +164,8 @@ async def main() -> int:
     print("Done.")
     if assign_result:
         print(f"  assign:         {'dry-run' if args.dry_run else 'ok'}")
-        print(f"  service:        {assign_result.config.service_name}")
+        print(f"  service name:   {assign_result.config.service_name}")
+        print(f"  panel email:    {assign_result.config.panel_email}")
         print(f"  config id:      {getattr(assign_result.config, 'id', '—')}")
         print(f"  user notified:  {assign_result.notified}")
     if tx:

@@ -79,7 +79,13 @@ class PurchaseStates(StatesGroup):
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-def _purchase_quantity(data: dict) -> int:
+def _purchase_create_error_message(exc: BaseException) -> str:
+    msg = str(exc).lower()
+    if "duplicate_service_name" in msg:
+        return fa.ERRORS["service_name_taken"]
+    if "duplicate_email" in msg or "duplicate email" in msg:
+        return fa.ERRORS["service_name_taken"]
+    return fa.ERRORS["config_create_failed"]
     return max(1, int(data.get("quantity", 1)))
 
 
@@ -406,19 +412,18 @@ async def _enter_discount_code_step(
 
 @router.callback_query(PurchaseStates.service_name, F.data == "buy:name:random")
 async def cb_name_random(
-    callback: CallbackQuery, state: FSMContext, session: AsyncSession, **kwargs
+    callback: CallbackQuery, state: FSMContext, session: AsyncSession, user: User, **kwargs
 ) -> None:
     data = await state.get_data()
     quantity = int(data.get("quantity", 1))
 
-    base = await _free_base_name(session)
+    base = await _free_base_name(session, user.tg_id)
     if quantity == 1:
         names = [base]
     else:
         names = [numbered_name(base, i + 1) for i in range(quantity)]
-        if any([await is_taken(session, n) for n in names]):
-            # rare collision — pick another base
-            base = await _free_base_name(session)
+        if any([await is_taken(session, user.tg_id, n) for n in names]):
+            base = await _free_base_name(session, user.tg_id)
             names = [numbered_name(base, i + 1) for i in range(quantity)]
     plan = data.get("plan") or {}
     qty = int(data.get("quantity", 1))
@@ -430,17 +435,17 @@ async def cb_name_random(
     )
 
 
-async def _free_base_name(session: AsyncSession) -> str:
+async def _free_base_name(session: AsyncSession, user_id: int) -> str:
     for _ in range(20):
         candidate = random_name()
-        if not await is_taken(session, candidate):
+        if not await is_taken(session, user_id, candidate):
             return candidate
     return random_name()
 
 
 @router.message(PurchaseStates.service_name, F.text)
 async def msg_service_name(
-    message: Message, state: FSMContext, session: AsyncSession, **kwargs
+    message: Message, state: FSMContext, session: AsyncSession, user: User, **kwargs
 ) -> None:
     raw = (message.text or "").strip().lower()
     raw = normalize_digits(raw)
@@ -452,14 +457,14 @@ async def msg_service_name(
     quantity = int(data.get("quantity", 1))
 
     if quantity == 1:
-        if await is_taken(session, raw):
+        if await is_taken(session, user.tg_id, raw):
             await message.answer(fa.ERRORS["service_name_taken"], reply_markup=_service_name_keyboard())
             return
         names = [raw]
     else:
         names = [numbered_name(raw, i + 1) for i in range(quantity)]
         for n in names:
-            if await is_taken(session, n):
+            if await is_taken(session, user.tg_id, n):
                 await message.answer(fa.ERRORS["service_name_taken"], reply_markup=_service_name_keyboard())
                 return
 
@@ -741,9 +746,9 @@ async def cb_free_claim(
 
     try:
         results = await _create_configs_for_user(session, user, data, vpn_service)
-    except Exception:
+    except Exception as exc:
         logger.exception("Free-claim purchase: create_configs failed")
-        await callback.message.edit_text(fa.ERRORS["config_create_failed"])
+        await callback.message.edit_text(_purchase_create_error_message(exc))
         await state.clear()
         return
 
@@ -824,9 +829,9 @@ async def cb_pay_wallet(
         results = await _create_configs_for_user(
             session, user, data, vpn_service
         )
-    except Exception:
+    except Exception as exc:
         logger.exception("Wallet purchase: create_configs failed")
-        await callback.message.edit_text(fa.ERRORS["config_create_failed"])
+        await callback.message.edit_text(_purchase_create_error_message(exc))
         await state.clear()
         return
 

@@ -76,9 +76,11 @@ Or step by step:
 ## Assign only
 
 ```bash
-./scripts/assign-panel-client.sh --tg-id ID --email NAME --dry-run
-./scripts/assign-panel-client.sh --tg-id ID --email NAME
+./scripts/assign-panel-client.sh --tg-id ID --email PANEL_EMAIL [--service-name DISPLAY]
 ```
+
+- `--email` = **3X-UI client email** (e.g. `u123@nexora.vpn` or legacy `ali123`)
+- `--service-name` = optional bot label (default: panel **comment**)
 
 User gets the same QR + subscription message as an approved purchase. No transaction row.
 
@@ -126,3 +128,5 @@ User gets the same QR + subscription message as an approved purchase. No transac
 | `ModuleNotFoundError: aiogram` | Use `.sh` wrappers, not host `python3` |
 | `User tg_id=… not found` | User must `/start` the bot first |
 | `already linked` | Use `record-purchase-transaction.sh` only — do not assign again |
+| `Panel client … not found` | `--email` must be the exact 3X-UI client email |
+| `service name taken` (bot) | Same user picked a name they already use — choose another label |

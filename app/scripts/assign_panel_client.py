@@ -3,7 +3,8 @@
 
 Run inside the bot container (has aiogram + deps):
 
-  ./scripts/assign-panel-client.sh --tg-id 123456789 --email ali123 --dry-run
+  ./scripts/assign-panel-client.sh --tg-id 123456789 --email u123@nexora.vpn
+  ./scripts/assign-panel-client.sh --tg-id 123 --email legacyname --service-name legacyname
 
 See docs/MANUAL_PANEL_CLIENT.md
 """
@@ -29,9 +30,16 @@ def _parse_args() -> argparse.Namespace:
         required=True,
         help="Telegram user ID (from admin manage panel)",
     )
-    g = p.add_mutually_exclusive_group(required=True)
-    g.add_argument("--email", help="Panel client email / service name (e.g. ali123)")
-    g.add_argument("--service-name", help="Alias for --email")
+    p.add_argument(
+        "--email",
+        required=True,
+        help="3X-UI panel client email (e.g. u123@nexora.vpn or legacy short name)",
+    )
+    p.add_argument(
+        "--service-name",
+        default="",
+        help="Bot display name (default: panel comment or legacy email)",
+    )
     p.add_argument("--plan-id", default="manual", help="Stored plan_id (default: manual)")
     p.add_argument("--plan-gb", type=int, default=0, help="Plan GB if panel total is 0")
     p.add_argument("--plan-days", type=int, default=30, help="Plan days for delayed-start text")
@@ -56,9 +64,10 @@ def _parse_args() -> argparse.Namespace:
 
 async def main() -> int:
     args = _parse_args()
-    service_name = (args.email or args.service_name or "").strip()
-    if not service_name:
-        print("Provide --email or --service-name", file=sys.stderr)
+    panel_email = args.email.strip()
+    service_name = (args.service_name or "").strip() or None
+    if not panel_email:
+        print("Provide --email (panel client email)", file=sys.stderr)
         return 1
 
     config = load_config()
@@ -87,6 +96,7 @@ async def main() -> int:
                 vpn=vpn,
                 bot=bot,
                 tg_id=args.tg_id,
+                panel_email=panel_email,
                 service_name=service_name,
                 plan_id=args.plan_id,
                 plan_gb=args.plan_gb,
@@ -111,7 +121,8 @@ async def main() -> int:
     else:
         print("Assigned successfully:")
     print(f"  user tg_id:     {args.tg_id}")
-    print(f"  service:        {cfg.service_name}")
+    print(f"  service name:   {cfg.service_name}")
+    print(f"  panel email:    {cfg.panel_email}")
     print(f"  config id:      {getattr(cfg, 'id', '—')}")
     print(f"  plan:           {cfg.plan_gb} GB / {cfg.plan_days} days")
     print(f"  subscription:   {result.sub_url}")

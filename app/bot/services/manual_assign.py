@@ -19,7 +19,7 @@ from app.bot.utils.jalali import (
 )
 from app.bot.utils.persian import to_persian_digits
 from app.bot.utils.service_activation import send_service_activated
-from app.bot.utils.service_name import panel_email, validate
+from app.bot.utils.service_name import resolve_display_service_name, validate
 from app.db.models import User, VPNConfig
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,8 @@ async def assign_panel_client_to_user(
     vpn: VPNService,
     bot: Bot | None,
     tg_id: int,
-    service_name: str,
+    panel_email: str,
+    service_name: str | None = None,
     plan_id: str = "manual",
     plan_gb: int = 0,
     plan_days: int = 30,
@@ -68,15 +69,14 @@ async def assign_panel_client_to_user(
     dry_run: bool = False,
 ) -> ManualAssignResult:
     """
-    Register a client that already exists on the 3X-UI panel under ``service_name``
-    (panel email) for ``tg_id``, then optionally send the same activation message as
-    purchase approval.
+    Link an existing 3X-UI client (``panel_email``) to ``tg_id``.
+
+    ``service_name`` is the bot display label; defaults to panel comment or legacy
+    email when the panel client was created before auto-generated emails.
     """
-    email = panel_email(service_name)
-    if not validate(email):
-        raise ValueError(
-            f"Invalid service name {service_name!r} — use 3–30 lowercase letters/digits"
-        )
+    email = panel_email.strip()
+    if not email:
+        raise ValueError("panel_email is required")
 
     user = await User.get(session, tg_id)
     if not user:
@@ -89,6 +89,13 @@ async def assign_panel_client_to_user(
         raise ValueError(f"Panel client {email!r} not found — create it in 3X-UI first") from exc
     except XUIError as exc:
         raise RuntimeError(f"Panel error for {email}: {exc}") from exc
+
+    display_name = resolve_display_service_name(email, record, explicit=service_name)
+    if not validate(display_name):
+        raise ValueError(
+            f"Could not derive a valid service name for panel client {email!r}. "
+            "Pass --service-name explicitly."
+        )
 
     sub_id = str(record.get("subId") or record.get("sub_id") or "").strip()
     if not sub_id:
@@ -108,10 +115,10 @@ async def assign_panel_client_to_user(
             f"Panel email {email!r} already belongs to user {existing_email.user_id}"
         )
 
-    existing_name = await VPNConfig.get_by_name(session, tg_id, email)
+    existing_name = await VPNConfig.get_by_name(session, tg_id, display_name)
     if existing_name:
         raise ValueError(
-            f"User {tg_id} already has service {email!r} (config id={existing_name.id})"
+            f"User {tg_id} already has service {display_name!r} (config id={existing_name.id})"
         )
 
     resolved_gb = (
@@ -137,9 +144,10 @@ async def assign_panel_client_to_user(
     panel_tg = int(record.get("tgId") or 0)
 
     logger.info(
-        "Manual assign: user=%s email=%s sub=%s gb=%s days=%s dry_run=%s",
+        "Manual assign: user=%s panel_email=%s service=%s sub=%s gb=%s days=%s dry_run=%s",
         tg_id,
         email,
+        display_name,
         sub_id,
         resolved_gb,
         resolved_days,
@@ -149,7 +157,7 @@ async def assign_panel_client_to_user(
     if dry_run:
         placeholder = VPNConfig(
             user_id=tg_id,
-            service_name=email,
+            service_name=display_name,
             panel_email=email,
             panel_uuid=vless_uuid,
             subscription_id=sub_id,
@@ -176,6 +184,13 @@ async def assign_panel_client_to_user(
         )
         logger.info("Panel tgId for %s set to %s", email, tg_id)
 
+    comment = str(record.get("comment") or "").strip()
+    if comment != display_name:
+        await xui.update_client(
+            email,
+            **xui._client_fields_for_update(record, traffic, comment=display_name),
+        )
+
     inbound_ids = xui.inbound_ids_from_record(record)
     if inbound_ids:
         await xui.ensure_client_on_inbounds(email, vless_uuid, inbound_ids)
@@ -183,7 +198,7 @@ async def assign_panel_client_to_user(
     config = await VPNConfig.create(
         session,
         user_id=tg_id,
-        service_name=email,
+        service_name=display_name,
         panel_email=email,
         panel_uuid=vless_uuid,
         subscription_id=sub_id,

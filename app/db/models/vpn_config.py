@@ -98,7 +98,14 @@ class VPNConfig(Base):
         return result.scalar_one_or_none()
 
     @classmethod
+    async def name_exists_for_user(
+        cls, session: AsyncSession, user_id: int, service_name: str
+    ) -> bool:
+        return (await cls.get_by_name(session, user_id, service_name)) is not None
+
+    @classmethod
     async def name_exists(cls, session: AsyncSession, service_name: str) -> bool:
+        """Global name check — prefer name_exists_for_user for new code."""
         from sqlalchemy import func as f
         result = await session.execute(
             select(f.count()).select_from(cls).where(cls.service_name == service_name)
