@@ -37,165 +37,188 @@ done
 # shellcheck disable=SC1090
 source "$ENV_FILE"
 
-XUI_TOKEN="${XUI_TOKEN:-}"
-XUI_PATH="${XUI_PATH:-${XUI_BASE_PATH:-/}}"
-XUI_HOST="${XUI_HOST:-https://127.0.0.1:2057}"
-PANEL_BASE="${XUI_HOST%/}${XUI_PATH%/}/"
-MS_PER_DAY=86400000
+export XUI_TOKEN="${XUI_TOKEN:-}"
+export XUI_PATH="${XUI_PATH:-${XUI_BASE_PATH:-/}}"
+export XUI_HOST="${XUI_HOST:-https://127.0.0.1:2057}"
+export PANEL_BASE="${XUI_HOST%/}${XUI_PATH%/}/"
+export MS_PER_DAY=86400000
+export PG_CONTAINER PG_USER PG_DB DRY_RUN LIST_MISSING
 
 [[ -n "$XUI_TOKEN" ]] || { echo "XUI_TOKEN missing in $ENV_FILE" >&2; exit 1; }
 
-api() {
-  local method="$1" path="$2" body="${3:-}"
-  local url="${PANEL_BASE}${path#/}"
-  if [[ -n "$body" ]]; then
-    curl -sk -X "$method" "$url" \
-      -H "Authorization: Bearer ${XUI_TOKEN}" \
-      -H "Content-Type: application/json" \
-      -d "$body"
-  else
-    curl -sk -X "$method" "$url" \
-      -H "Authorization: Bearer ${XUI_TOKEN}"
+fetch_configs_json() {
+  local ids_csv="${1:-}"
+  local where_clause=""
+  if [[ -n "$ids_csv" ]]; then
+    where_clause="WHERE id IN ($ids_csv)"
   fi
+  docker exec "$PG_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -t -A -c "
+    SELECT COALESCE(json_agg(row_to_json(x) ORDER BY x.id DESC), '[]'::json)
+    FROM (
+      SELECT id, user_id, service_name, panel_email, panel_uuid, subscription_id,
+             traffic_limit_bytes, expiry_date, is_active, plan_days
+      FROM vpn_configs
+      $where_clause
+    ) x;
+  "
 }
 
-api_json() {
-  local method="$1" path="$2" body="${3:-}"
-  local resp
-  resp="$(api "$method" "$path" "$body")"
-  python3 - "$resp" "$PANEL_BASE$path" <<'PY'
-import json, sys
-raw, url = sys.argv[1], sys.argv[2]
-raw = raw.strip()
-if not raw:
-    raise SystemExit(f"Empty API response from {url}")
-try:
-    data = json.loads(raw)
-except json.JSONDecodeError:
-    preview = raw[:200].replace("\n", " ")
-    raise SystemExit(f"Non-JSON from {url}: {preview!r}")
-print(json.dumps(data))
-PY
-}
+run_python() {
+  python3 - "${CONFIG_IDS[@]}" <<'PY'
+from __future__ import annotations
 
-client_exists() {
-  local email="$1"
-  local resp msg
-  resp="$(api_json GET "panel/api/clients/get/$(python3 -c "import urllib.parse; print(urllib.parse.quote('${email}', safe=''))")")"
-  msg="$(echo "$resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('msg',''))")"
-  if echo "$msg" | grep -qi 'not found\|یافت نشد'; then
-    return 1
-  fi
-  echo "$resp" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if d.get('success') else 1)"
-}
-
-expiry_ms_for_row() {
-  local expiry="$1" plan_days="$2"
-  python3 - "$expiry" "$plan_days" "$MS_PER_DAY" <<'PY'
+import json
+import os
+import subprocess
 import sys
+import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
-expiry, plan_days, ms_day = sys.argv[1], int(sys.argv[2] or 30), int(sys.argv[3])
-if expiry and expiry.strip() not in ("", "NULL"):
-    dt = datetime.fromisoformat(expiry.replace(" ", "T"))
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    print(int(dt.timestamp() * 1000))
-else:
-    print(-plan_days * ms_day)
+
+PANEL_BASE = os.environ["PANEL_BASE"]
+TOKEN = os.environ["XUI_TOKEN"]
+MS_PER_DAY = int(os.environ["MS_PER_DAY"])
+DRY_RUN = os.environ.get("DRY_RUN", "0") == "1"
+LIST_MISSING = os.environ.get("LIST_MISSING", "0") == "1"
+CONFIG_IDS = [int(x) for x in sys.argv[1:]] if len(sys.argv) > 1 else []
+
+configs_json = os.environ.get("CONFIGS_JSON", "[]")
+configs = json.loads(configs_json)
+
+
+def api(method: str, path: str, body: dict | None = None) -> dict:
+    url = PANEL_BASE + path.lstrip("/")
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+    data = None
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+        data = json.dumps(body).encode()
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    import ssl
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    with urllib.request.urlopen(req, context=ctx, timeout=30) as resp:
+        raw = resp.read().decode()
+    if not raw.strip():
+        raise SystemExit(f"Empty API response from {url}")
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        raise SystemExit(f"Non-JSON from {url}: {raw[:200]!r}")
+    return data
+
+
+def client_exists(email: str) -> bool:
+    enc = urllib.parse.quote(email, safe="")
+    try:
+        data = api("GET", f"panel/api/clients/get/{enc}")
+    except SystemExit:
+        return False
+    msg = str(data.get("msg", ""))
+    if "not found" in msg.lower() or "یافت نشد" in msg:
+        return False
+    return bool(data.get("success"))
+
+
+def expiry_ms(cfg: dict) -> int:
+    expiry = cfg.get("expiry_date")
+    plan_days = int(cfg.get("plan_days") or 30)
+    if expiry:
+        # psql json: "2026-07-29T21:23:17.017" or "2026-07-29 21:23:17.017"
+        s = str(expiry).replace(" ", "T")
+        if s.endswith("+00"):
+            s += ":00"
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp() * 1000)
+    return -plan_days * MS_PER_DAY
+
+
+def load_inbound_ids() -> list[int]:
+    data = api("GET", "panel/api/inbounds/list")
+    ids = [int(x["id"]) for x in (data.get("obj") or []) if x.get("enable")]
+    if not ids:
+        raise SystemExit("No enabled inbounds")
+    print(f"Using inbounds: {','.join(str(i) for i in ids)}")
+    return ids
+
+
+def restore_one(cfg: dict, inbound_ids: list[int]) -> bool:
+    cid = cfg["id"]
+    email = cfg["panel_email"]
+    if client_exists(email):
+        print(f"SKIP id={cid} ({email}) — already on panel")
+        return True
+
+    exp_ms = expiry_ms(cfg)
+    body = {
+        "client": {
+            "email": email,
+            "uuid": cfg["panel_uuid"],
+            "subId": cfg["subscription_id"],
+            "totalGB": int(cfg["traffic_limit_bytes"]),
+            "expiryTime": exp_ms,
+            "tgId": int(cfg["user_id"]),
+            "limitIp": 0,
+            "enable": bool(cfg["is_active"]),
+            "comment": cfg["service_name"],
+            "reset": 0,
+        },
+        "inboundIds": inbound_ids,
+    }
+    print(
+        f"Restore id={cid} email={email} sub={cfg['subscription_id']} "
+        f"uuid={cfg['panel_uuid']} expiry_ms={exp_ms} inbounds={inbound_ids}"
+    )
+    if DRY_RUN:
+        print("  (dry-run — no panel write)")
+        return True
+
+    data = api("POST", "panel/api/clients/add", body)
+    if not data.get("success"):
+        print(f"FAIL id={cid}: {data.get('msg', data)}", file=sys.stderr)
+        return False
+    print(f"OK id={cid} ({email})")
+    return True
+
+
+if LIST_MISSING:
+    print("Missing on panel:")
+    for cfg in configs:
+        if not client_exists(cfg["panel_email"]):
+            print(
+                f"  id={cfg['id']}  user={cfg['user_id']}  "
+                f"name={cfg['service_name']!r}  email={cfg['panel_email']!r}  "
+                f"sub={cfg['subscription_id']}"
+            )
+    sys.exit(0)
+
+if not CONFIG_IDS:
+    raise SystemExit("Provide --config-id and/or --list-missing")
+
+inbound_ids = load_inbound_ids()
+by_id = {int(c["id"]): c for c in configs}
+fail = False
+for cid in CONFIG_IDS:
+    cfg = by_id.get(cid)
+    if not cfg:
+        print(f"Config id={cid} not in bot DB", file=sys.stderr)
+        fail = True
+        continue
+    if not restore_one(cfg, inbound_ids):
+        fail = True
+
+sys.exit(1 if fail else 0)
 PY
-}
-
-fetch_rows() {
-  local ids_csv="$1"
-  docker exec "$PG_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -At -F $'\t' -c \
-    "SELECT id, user_id, service_name, panel_email, panel_uuid, subscription_id,
-            traffic_limit_bytes, COALESCE(expiry_date::text, ''), is_active, plan_days
-     FROM vpn_configs
-     ${ids_csv:+WHERE id IN ($ids_csv)}
-     ORDER BY id DESC;"
-}
-
-list_missing() {
-  local line id email
-  echo "Missing on panel:"
-  while IFS=$'\t' read -r id user_id service_name email uuid sub total expiry active plan_days; do
-    [[ -n "$id" ]] || continue
-    if client_exists "$email"; then
-      continue
-    fi
-    echo "  id=$id  user=$user_id  name='$service_name'  email='$email'  sub=$sub"
-  done < <(fetch_rows "")
-}
-
-INBOUND_IDS=""
-load_inbound_ids() {
-  local resp
-  resp="$(api_json GET panel/api/inbounds/list)"
-  INBOUND_IDS="$(echo "$resp" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-ids = [str(x['id']) for x in (data.get('obj') or []) if x.get('enable')]
-print(','.join(ids))
-")"
-  [[ -n "$INBOUND_IDS" ]] || { echo "No enabled inbounds" >&2; exit 1; }
-  echo "Using inbounds: $INBOUND_IDS"
-}
-
-restore_one() {
-  local id="$1"
-  local row id_ user_id service_name email uuid sub total expiry active plan_days
-  row="$(fetch_rows "$id")"
-  [[ -n "$row" ]] || { echo "Config id=$id not in bot DB" >&2; return 1; }
-  IFS=$'\t' read -r id_ user_id service_name email uuid sub total expiry active plan_days <<<"$row"
-
-  if client_exists "$email"; then
-    echo "SKIP id=$id ($email) — already on panel"
-    return 0
-  fi
-
-  local expiry_ms inbound_json body
-  expiry_ms="$(expiry_ms_for_row "$expiry" "$plan_days")"
-  inbound_json="$(python3 -c "import json; print(json.dumps([int(x) for x in '${INBOUND_IDS}'.split(',') if x]))")"
-
-  body="$(python3 - "$email" "$uuid" "$sub" "$total" "$expiry_ms" "$user_id" "$service_name" "$active" "$inbound_json" <<'PY'
-import json, sys
-email, uuid, sub, total, expiry_ms, tg_id, comment, active, inbounds = sys.argv[1:10]
-client = {
-    "email": email,
-    "uuid": uuid,
-    "subId": sub,
-    "totalGB": int(total),
-    "expiryTime": int(expiry_ms),
-    "tgId": int(tg_id),
-    "limitIp": 0,
-    "enable": active.lower() in ("t", "true", "1"),
-    "comment": comment,
-    "reset": 0,
-}
-print(json.dumps({"client": client, "inboundIds": json.loads(inbounds)}))
-PY
-)"
-
-  echo "Restore id=$id email=$email sub=$sub uuid=$uuid expiry_ms=$expiry_ms inbounds=[$INBOUND_IDS]"
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "  (dry-run — no panel write)"
-    return 0
-  fi
-
-  local resp ok msg
-  resp="$(api_json POST panel/api/clients/add "$body")"
-  ok="$(echo "$resp" | python3 -c "import sys,json; print(json.load(sys.stdin).get('success', False))")"
-  msg="$(echo "$resp" | python3 -c "import sys,json; print(json.load(sys.stdin).get('msg',''))")"
-  if [[ "$ok" != "True" && "$ok" != "true" ]]; then
-    echo "FAIL id=$id: $msg" >&2
-    return 1
-  fi
-  echo "OK id=$id ($email)"
 }
 
 if [[ "$LIST_MISSING" -eq 1 ]]; then
-  list_missing
-  exit 0
+  export CONFIGS_JSON
+  CONFIGS_JSON="$(fetch_configs_json "")"
+  LIST_MISSING=1 DRY_RUN=0 run_python
+  exit $?
 fi
 
 [[ ${#CONFIG_IDS[@]} -gt 0 ]] || {
@@ -203,13 +226,13 @@ fi
   exit 1
 }
 
-load_inbound_ids
-fail=0
-for cid in "${CONFIG_IDS[@]}"; do
-  restore_one "$cid" || fail=1
-done
+export CONFIGS_JSON
+ids_csv="$(IFS=,; echo "${CONFIG_IDS[*]}")"
+CONFIGS_JSON="$(fetch_configs_json "$ids_csv")"
+run_python
+exit_code=$?
 
-if [[ "$DRY_RUN" -eq 0 && "$fail" -eq 0 ]]; then
+if [[ "$DRY_RUN" -eq 0 && "$exit_code" -eq 0 ]]; then
   echo ""
   echo "Triggering node sync (optional)..."
   if [[ -x "$ROOT/../scripts/repair-direct-nodes.sh" ]]; then
@@ -221,4 +244,4 @@ if [[ "$DRY_RUN" -eq 0 && "$fail" -eq 0 ]]; then
   fi
 fi
 
-exit "$fail"
+exit "$exit_code"
