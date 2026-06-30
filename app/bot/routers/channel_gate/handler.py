@@ -13,6 +13,7 @@ from app.bot.services.required_channels import (
     audit_channels_live,
     bot_gate_capable,
     is_membership_confirmed,
+    mark_gate_passed,
     missing_joined_channels,
 )
 from app.db.models import User
@@ -32,6 +33,7 @@ async def _pass_channel_gate(
 ) -> None:
     await User.update(session, user.tg_id, channel_gate_passed=True)
     user.channel_gate_passed = True
+    mark_gate_passed(user.tg_id)
     await send_welcome(callback, user, session, is_new_user=is_new_user, **kwargs)
     await callback.answer()
 

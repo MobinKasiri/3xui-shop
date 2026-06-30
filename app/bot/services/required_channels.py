@@ -14,6 +14,7 @@ from aiogram.types import (
     ChatMemberRestricted,
     InlineKeyboardMarkup,
 )
+from cachetools import TTLCache
 
 from app.bot.i18n import fa
 from app.bot.utils.keyboards import K
@@ -33,6 +34,16 @@ _INACCESSIBLE_HINTS = (
 )
 _resolved_chat_ids: dict[str, int] = {}
 _bot_gate_capable: bool = False
+# Skip repeated Telegram membership checks for recently verified users.
+_gate_pass_cache: TTLCache[int, bool] = TTLCache(maxsize=10_000, ttl=120)
+
+
+def mark_gate_passed(user_id: int) -> None:
+    _gate_pass_cache[user_id] = True
+
+
+def invalidate_gate_passed(user_id: int) -> None:
+    _gate_pass_cache.pop(user_id, None)
 
 
 class VerifyResult(Enum):
@@ -288,12 +299,17 @@ async def should_block_for_channels(
     if not channels:
         return False, []
 
+    if channel_gate_passed and user_id in _gate_pass_cache:
+        return False, []
+
     audits = await audit_channels_live(bot, user_id, channels)
     if is_membership_confirmed(audits):
+        mark_gate_passed(user_id)
         return False, []
 
     missing = missing_joined_channels(audits)
     if missing:
+        invalidate_gate_passed(user_id)
         return True, missing
 
     if not bot_gate_capable() and channel_gate_passed:

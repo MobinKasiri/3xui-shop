@@ -50,6 +50,9 @@ class BotConfig:
 @dataclass
 class DatabaseConfig:
     URL: str
+    POOL_SIZE: int = 10
+    MAX_OVERFLOW: int = 10
+    POOL_RECYCLE: int = 1800
 
 
 @dataclass
@@ -297,6 +300,9 @@ def load_config() -> Config:
                 "DATABASE_URL",
                 default="sqlite+aiosqlite:////" + str(DEFAULT_DATA_DIR / "nexorabot.sqlite3"),
             ),
+            POOL_SIZE=_int_env(env, "DATABASE_POOL_SIZE", default=10),
+            MAX_OVERFLOW=_int_env(env, "DATABASE_MAX_OVERFLOW", default=10),
+            POOL_RECYCLE=_int_env(env, "DATABASE_POOL_RECYCLE", default=1800),
         ),
         redis=RedisConfig(
             HOST=env.str("REDIS_HOST", default="redis"),

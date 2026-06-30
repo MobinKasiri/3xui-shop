@@ -19,7 +19,15 @@ class Database:
         elif url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql+asyncpg://", 1)
 
-        self.engine = create_async_engine(url, pool_pre_ping=True)
+        engine_kwargs: dict = {"pool_pre_ping": True}
+        if "postgresql" in url:
+            engine_kwargs.update(
+                pool_size=config.POOL_SIZE,
+                max_overflow=config.MAX_OVERFLOW,
+                pool_recycle=config.POOL_RECYCLE,
+            )
+
+        self.engine = create_async_engine(url, **engine_kwargs)
         self.session = async_sessionmaker(
             bind=self.engine,
             class_=AsyncSession,

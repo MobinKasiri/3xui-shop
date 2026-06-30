@@ -8,6 +8,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from aiogram import Bot
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.bot.i18n import fa
@@ -37,6 +38,9 @@ async def run_expiry_check(
 
     async with session_factory() as session:
         configs = await VPNConfig.get_active(session)
+        renewal_pct = int(load_renewal_settings().get("discount_percent", 10))
+
+        candidates: list[tuple] = []
         for config in configs:
             expiry = config.expiry_date
             if expiry is None:
@@ -45,20 +49,28 @@ async def run_expiry_check(
                 expiry = expiry.replace(tzinfo=timezone.utc)
             if expiry > threshold:
                 continue
-
             days_left = days_until(expiry)
             if days_left < 0:
                 continue
+            candidates.append((config, expiry, days_left))
 
-            bucket = str(days_left)
-            already = await NotificationLog.already_sent(
-                session, config.id, NOTIF_EXPIRY, bucket
+        sent_keys: set[tuple[int, str]] = set()
+        if candidates:
+            config_ids = [c[0].id for c in candidates]
+            result = await session.execute(
+                select(NotificationLog.config_id, NotificationLog.bucket).where(
+                    NotificationLog.config_id.in_(config_ids),
+                    NotificationLog.type == NOTIF_EXPIRY,
+                )
             )
-            if already:
+            sent_keys = {(row[0], row[1]) for row in result.all()}
+
+        for config, expiry, days_left in candidates:
+            bucket = str(days_left)
+            if (config.id, bucket) in sent_keys:
                 continue
 
             remaining_gb = config.traffic_remaining_bytes / (1024 ** 3)
-            renewal_pct = int(load_renewal_settings().get("discount_percent", 10))
             text = fa.NOTIF_EXPIRY_WARNING.format(
                 name=config.service_name,
                 expiry=to_jalali(expiry),

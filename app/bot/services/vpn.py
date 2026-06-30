@@ -523,12 +523,17 @@ class VPNService:
     # ── status / VLESS strings ───────────────────────────────────────────────
 
     async def refresh_traffic(
-        self, session: AsyncSession, config: VPNConfig
+        self,
+        session: AsyncSession,
+        config: VPNConfig,
+        *,
+        traffic: ClientTraffic | None = None,
     ) -> VPNConfig:
-        try:
-            traffic = await self.xui.get_client_traffic(config.panel_email)
-        except XUIError:
-            return config
+        if traffic is None:
+            try:
+                traffic = await self.xui.get_client_traffic(config.panel_email)
+            except XUIError:
+                return config
 
         updates: dict = {"traffic_used_bytes": traffic.used_bytes}
         if traffic.expiry_time > 0:

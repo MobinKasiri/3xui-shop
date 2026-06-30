@@ -1,6 +1,8 @@
 """Professional service-activation message with subscription QR code."""
 from __future__ import annotations
 
+import asyncio
+
 from aiogram import Bot
 from aiogram.types import BufferedInputFile, InlineKeyboardMarkup, Message
 
@@ -60,7 +62,7 @@ async def send_service_activated(
         expiry=expiry,
         sub_url=sub_url,
     )
-    qr = make_qr_png(sub_url)
+    qr = await asyncio.to_thread(make_qr_png, sub_url)
     photo = BufferedInputFile(qr.getvalue(), filename="qr.png")
     await bot.send_photo(
         chat_id,

@@ -184,7 +184,7 @@ class XUIApiService:
             headers = {}
             if self._config.TOKEN:
                 headers["Authorization"] = f"Bearer {self._config.TOKEN}"
-            connector = aiohttp.TCPConnector(ssl=False)
+            connector = aiohttp.TCPConnector(ssl=False, limit=30, limit_per_host=15)
             self._session = aiohttp.ClientSession(
                 cookie_jar=jar,
                 headers=headers,
@@ -268,7 +268,9 @@ class XUIApiService:
     ) -> dict:
         """Make an authenticated request; auto-relogin on 401."""
         if not self._logged_in and not self._config.TOKEN:
-            await self.login()
+            async with self._lock:
+                if not self._logged_in and not self._config.TOKEN:
+                    await self.login()
         session = await self._get_session()
         url = f"{self._base}{path}"
         try:
@@ -277,8 +279,9 @@ class XUIApiService:
                     if self._config.TOKEN:
                         raise XUIAuthError("Invalid or expired API token.")
                     if retry:
-                        self._logged_in = False
-                        await self.login()
+                        async with self._lock:
+                            self._logged_in = False
+                            await self.login()
                         return await self._request(method, path, retry=False, **kwargs)
                     raise XUIAuthError("Persistent 401 after relogin.")
                 if resp.status == 404:

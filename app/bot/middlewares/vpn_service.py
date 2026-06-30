@@ -22,6 +22,6 @@ class VPNServiceMiddleware(BaseMiddleware):
         data: dict[str, Any],
     ) -> Any:
         config: Config | None = data.get("config")
-        if config:
+        if config and not data.get("vpn_service"):
             data["vpn_service"] = await ensure_vpn_service(config)
         return await handler(event, data)

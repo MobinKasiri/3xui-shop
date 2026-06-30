@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 
-from app.bot.services.node_sync_signal import bump_node_sync
+from app.bot.services.node_sync_signal import bump_node_sync, close_redis
 from app.bot.services.vpn import VPNService
 from app.bot.services.xui_api import XUIApiService
 from app.config import Config
@@ -14,10 +15,15 @@ logger = logging.getLogger(__name__)
 xui_service: XUIApiService | None = None
 INBOUND_IDS: list[int] | None = None
 
+_inbound_cache_at: float = 0.0
+INBOUND_CACHE_TTL_SEC = 60.0
+_bootstrap_retry_after: float = 0.0
+BOOTSTRAP_BACKOFF_SEC = 60.0
+
 
 async def bootstrap_inbounds(config: Config) -> bool:
     """Login to panel and cache inbound IDs. Returns True on success."""
-    global xui_service, INBOUND_IDS
+    global xui_service, INBOUND_IDS, _inbound_cache_at, _bootstrap_retry_after
 
     if xui_service is None:
         xui_service = XUIApiService(config.xui)
@@ -35,6 +41,8 @@ async def bootstrap_inbounds(config: Config) -> bool:
             filter_names=config.xui.INBOUND_FILTER,
         )
         INBOUND_IDS = inbound_ids
+        _inbound_cache_at = time.monotonic()
+        _bootstrap_retry_after = 0.0
         logger.info("✅ Inbound bootstrap OK — ids=%s", inbound_ids)
         if config.xui.NODE_SYNC_ENABLED:
             logger.warning(
@@ -94,15 +102,23 @@ async def bootstrap_with_retries(config: Config, retries: int = 3) -> bool:
     return False
 
 
-async def refresh_inbound_ids(config: Config) -> list[int]:
+async def refresh_inbound_ids(config: Config, *, force: bool = False) -> list[int]:
     """Re-query panel for all enabled inbounds (picks up new direct nodes)."""
-    global INBOUND_IDS
+    global INBOUND_IDS, _inbound_cache_at
+    now = time.monotonic()
+    if (
+        not force
+        and INBOUND_IDS
+        and (now - _inbound_cache_at) < INBOUND_CACHE_TTL_SEC
+    ):
+        return INBOUND_IDS
     if xui_service is None:
         return INBOUND_IDS or []
     inbound_ids = await xui_service.enabled_inbound_ids(
         filter_names=config.xui.INBOUND_FILTER,
     )
     INBOUND_IDS = inbound_ids
+    _inbound_cache_at = now
     return inbound_ids
 
 
@@ -131,8 +147,12 @@ async def ensure_vpn_service(config: Config) -> VPNService | None:
     service = get_vpn_service(config)
     if service:
         return service
+    now = time.monotonic()
+    if now < _bootstrap_retry_after:
+        return None
     if await bootstrap_inbounds(config):
         return get_vpn_service(config)
+    _bootstrap_retry_after = now + BOOTSTRAP_BACKOFF_SEC
     return None
 
 
@@ -140,3 +160,4 @@ async def close_xui() -> None:
     global xui_service
     if xui_service:
         await xui_service.close()
+    await close_redis()

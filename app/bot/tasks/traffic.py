@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 
 from aiogram import Bot
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.bot.i18n import fa
@@ -32,24 +33,33 @@ async def run_traffic_check(
 
     async with session_factory() as session:
         configs = await VPNConfig.get_active(session)
-        for config in configs:
-            if config.traffic_limit_bytes == 0:
-                continue
-            pct = config.usage_percent
-            if pct < TRAFFIC_WARN_PCT:
-                continue
+        renewal_pct = int(load_renewal_settings().get("discount_percent", 10))
 
-            bucket = "80pct"
-            already = await NotificationLog.already_sent(
-                session, config.id, NOTIF_TRAFFIC, bucket
+        warn_configs = [
+            c for c in configs
+            if c.traffic_limit_bytes > 0 and c.usage_percent >= TRAFFIC_WARN_PCT
+        ]
+        sent_ids: set[int] = set()
+        if warn_configs:
+            config_ids = [c.id for c in warn_configs]
+            result = await session.execute(
+                select(NotificationLog.config_id).where(
+                    NotificationLog.config_id.in_(config_ids),
+                    NotificationLog.type == NOTIF_TRAFFIC,
+                    NotificationLog.bucket == "80pct",
+                )
             )
-            if already:
+            sent_ids = {row[0] for row in result.all()}
+
+        for config in warn_configs:
+            if config.id in sent_ids:
                 continue
 
             used_gb = config.traffic_used_gb
             total_gb = config.traffic_limit_gb
+            pct = config.usage_percent
+            bucket = "80pct"
 
-            renewal_pct = int(load_renewal_settings().get("discount_percent", 10))
             text = fa.NOTIF_TRAFFIC_WARNING.format(
                 name=config.service_name,
                 used_gb=to_persian_digits(f"{used_gb:.1f}"),

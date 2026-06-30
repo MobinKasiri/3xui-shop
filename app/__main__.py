@@ -45,6 +45,8 @@ TELEGRAM_WEBHOOK = "/webhook"
 
 logger = logging.getLogger(__name__)
 
+_scheduler: "AsyncIOScheduler | None" = None
+
 
 async def on_startup(bot: Bot, config: Config, db: Database, **kwargs) -> None:
     logger.info("Bot starting up...")
@@ -93,7 +95,7 @@ async def on_startup(bot: Bot, config: Config, db: Database, **kwargs) -> None:
 
     await ensure_bot_schema(db)
 
-    await sync_subscription_urls(config, db.session)
+    asyncio.create_task(sync_subscription_urls(config, db.session))
 
     if config.bot.CHANNEL_GATE_ENABLED and config.bot.gate_channels:
         from app.bot.services.required_channels import verify_gate_channels_at_startup
@@ -153,29 +155,34 @@ async def on_startup(bot: Bot, config: Config, db: Database, **kwargs) -> None:
 
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-    scheduler = AsyncIOScheduler(timezone="UTC")
-    scheduler.add_job(
+    global _scheduler
+    _scheduler = AsyncIOScheduler(timezone="UTC")
+    _scheduler.add_job(
         run_expiry_check, "interval", hours=1,
         kwargs={"session_factory": db.session, "bot": bot},
         id="expiry_check",
     )
-    scheduler.add_job(
+    _scheduler.add_job(
         run_traffic_check, "interval", hours=1,
         kwargs={"session_factory": db.session, "bot": bot},
         id="traffic_check",
     )
     if xui_service:
-        scheduler.add_job(
+        _scheduler.add_job(
             run_traffic_sync, "interval", minutes=30,
             kwargs={"session_factory": db.session, "xui": xui_service},
             id="traffic_sync",
         )
-    scheduler.start()
+    _scheduler.start()
     logger.info("APScheduler started.")
 
 
 async def on_shutdown(bot: Bot, db: Database, **kwargs) -> None:
     logger.info("Bot shutting down...")
+    global _scheduler
+    if _scheduler is not None:
+        _scheduler.shutdown(wait=False)
+        _scheduler = None
     await close_xui()
     await db.close()
     await bot.session.close()
@@ -258,7 +265,7 @@ async def main() -> None:
         @web.middleware
         async def log_webhook(request: web.Request, handler):
             if request.path == TELEGRAM_WEBHOOK:
-                logger.info("Webhook %s from %s", request.method, request.remote)
+                logger.debug("Webhook %s from %s", request.method, request.remote)
             return await handler(request)
 
         app = web.Application(middlewares=[log_webhook])

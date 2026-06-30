@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.i18n import fa
 from app.bot.services.required_channels import (
     channel_gate_keyboard,
+    invalidate_gate_passed,
+    mark_gate_passed,
     should_block_for_channels,
 )
 from app.bot.utils.messaging import (
@@ -60,11 +62,13 @@ class ChannelGateMiddleware(BaseMiddleware):
             if session is not None and not user.channel_gate_passed:
                 await User.update(session, user.tg_id, channel_gate_passed=True)
                 user.channel_gate_passed = True
+            mark_gate_passed(user.tg_id)
             return await handler(event, data)
 
         if session is not None and user.channel_gate_passed and missing:
             await User.update(session, user.tg_id, channel_gate_passed=False)
             user.channel_gate_passed = False
+            invalidate_gate_passed(user.tg_id)
 
         markup = channel_gate_keyboard(config.bot.gate_channels)
 

@@ -6,6 +6,7 @@ Manage configs (screenshots 9–10).
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from aiogram import F, Router
@@ -145,7 +146,7 @@ async def _load_panel_traffic(
         try:
             traffic = await vpn.xui.get_client_traffic(cfg.panel_email)
             panel_expiry_ms = traffic.expiry_time
-            await vpn.refresh_traffic(session, cfg)
+            await vpn.refresh_traffic(session, cfg, traffic=traffic)
         except XUIError:
             pass
     return panel_expiry_ms
@@ -242,7 +243,7 @@ async def cb_sub_qr(
         reply_markup=_sub_qr_keyboard(sub_url, cid),
         disable_web_page_preview=True,
     )
-    qr = make_qr_png(sub_url)
+    qr = await asyncio.to_thread(make_qr_png, sub_url)
     photo = BufferedInputFile(qr.getvalue(), filename="qr.png")
     await callback.message.answer_photo(
         photo=photo,
