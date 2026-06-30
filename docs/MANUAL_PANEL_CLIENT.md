@@ -79,7 +79,7 @@ Or step by step:
 ./scripts/assign-panel-client.sh --tg-id ID --email PANEL_EMAIL [--service-name DISPLAY]
 ```
 
-- `--email` = **3X-UI client email** (e.g. `u123@nexora.vpn` or legacy `ali123`)
+- `--email` = **3X-UI client email** (e.g. `u123@ncbot` or legacy `ali123`)
 - `--service-name` = optional bot label (default: panel **comment**)
 
 User gets the same QR + subscription message as an approved purchase. No transaction row.

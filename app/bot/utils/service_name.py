@@ -3,21 +3,19 @@ from __future__ import annotations
 
 import random
 import re
-import secrets
 import string
 
 from typing import TYPE_CHECKING
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot.utils.ids import make_panel_email
+from app.bot.utils.ids import PANEL_EMAIL_DOMAIN, make_panel_email
 from app.db.models import VPNConfig
 
 if TYPE_CHECKING:
     from app.bot.services.xui_api import XUIApiService
 
 NAME_PATTERN = re.compile(r"^[a-z0-9]{3,30}$")
-PANEL_EMAIL_DOMAIN = "nexora.vpn"
 
 
 def validate(name: str) -> bool:

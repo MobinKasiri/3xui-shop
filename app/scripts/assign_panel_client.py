@@ -3,7 +3,7 @@
 
 Run inside the bot container (has aiogram + deps):
 
-  ./scripts/assign-panel-client.sh --tg-id 123456789 --email u123@nexora.vpn
+  ./scripts/assign-panel-client.sh --tg-id 123456789 --email u123@ncbot
   ./scripts/assign-panel-client.sh --tg-id 123 --email legacyname --service-name legacyname
 
 See docs/MANUAL_PANEL_CLIENT.md
@@ -33,7 +33,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--email",
         required=True,
-        help="3X-UI panel client email (e.g. u123@nexora.vpn or legacy short name)",
+        help="3X-UI panel client email (e.g. u123@ncbot or legacy short name)",
     )
     p.add_argument(
         "--service-name",
